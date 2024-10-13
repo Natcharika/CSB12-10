@@ -5,17 +5,36 @@ const projectSchema = new mongoose.Schema({
     projectType: Number,
     projectStatus: Number,
     projectDescription: String,
-    student:[{
+    student: [{
         studentId: String,
         FirstName: String,
         LastName: String,
     }],
-    lecturer:[{
-        lecturerId: String,
-        FirstName: String,
-        LastName: String,
+    lecturer: [{
+        T_id: String,
+        T_name: String,
     }],
-    scoreId: String,
+    status: {
+        CSB01: {
+            date: { type: Date, default: Date.now },
+            status: {type: String, enum: ["waiting", "failed", "passed"], default: "waiting"},
+        },
+        CSB02: {
+            activeStatus: { type: Number, enum: [0, 1, 2], default: 0 }, // 0: nothing, 1: student action, 2: lecturer action
+            status: {type: String, enum: ["waiting", "failed", "passed"], default: "waiting"},
+            date: { type: Date, default: Date.now }
+        },
+        CSB03: {
+            activeStatus: { type: Number, enum: [0, 1, 2], default: 0 },
+            status: {type: String, enum: ["waiting", "failed", "passed"], default: "waiting"},
+            date: { type: Date, default: Date.now }
+        },
+        CSB04: {
+            activeStatus: { type: Number, enum: [0, 1, 2], default: 0 },
+            status: {type: String, enum: ["waiting", "failed", "passed"], default: "waiting"},
+            date: { type: Date, default: Date.now }
+        }
+    },
 });
 
 module.exports = mongoose.model('Project', projectSchema);

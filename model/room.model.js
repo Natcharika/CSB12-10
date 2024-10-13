@@ -10,9 +10,9 @@ const roomSchema = new mongoose.Schema({
         start_in_time: String,
     }],
     referees: [{
-        keyLecturer: String,
-        nameLecturer: String,
-        roleLecturer: String,
+        T_id: String,
+        T_name: String,
+        role: String,
     }],
 
 });

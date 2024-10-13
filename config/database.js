@@ -4,7 +4,7 @@ exports.connect = () => {
   mongoose
     .connect(MONGO_URI, {})
     .then(() => {
-      console.log("Successfully connected to dataBase");
+      console.log("Successfully connected to dataBase naja");
     })
     .then((error) => {
       console.error.apply(error);
