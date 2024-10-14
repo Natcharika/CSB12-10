@@ -28,6 +28,8 @@ const csb02 = require("./model/csb02.model")
 const csb03 = require("./model/csb03.model")
 const csb04 = require("./model/csb04.model")
 
+const adminUser = ["nateep", "admin2", "admin3"];
+
 const app = express();
 app.use(cors());
 
@@ -154,7 +156,7 @@ app.post("/create-form", async (req, res) => {
 
     console.log("Received body:", req.body); // Log the entire body
     // Create a new project
-    const projects = new Project  ({
+    const projects = new Project({
       projectName,
       projectType,
       projectStatus,
@@ -162,9 +164,12 @@ app.post("/create-form", async (req, res) => {
       student
     });
 
+    const savedData = await projects.save();
+    console.log("Saved project:", savedData); // Log the saved project
+    
     // await Project.findByIdAndUpdate(projects._id);
 
-    res.json({ body: { project: projects } });
+    res.json({ body: { project: savedData } });
   } catch (error) {
     console.error("Error creating project and score:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -342,59 +347,117 @@ app.post("/appointHeadOfDepartment", async (req, res) => {
 
 
 
-
-// POST route to create a new csb01 document
-app.get("/csb02", async (req, res) => {
+//activecsb02
+app.post("/student-csb02", async (req, res) => {
+  const { projectId, activeStatus, status } = req.body.params;
   try {
+    console.log(new Date().toLocaleString("en-TH", {timeZone: "Asia/Bangkok"}));
+    
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId , 
+      {
+        "status.CSB02.activeStatus": activeStatus,
+        "status.CSB02.status": status || "waiting",
+        "status.CSB02.date": new Date(),
+      },
+      { new: true }
+    );
 
-    let csb02Data = await csb02.find();
-    const projectIds = csb02Data.map(item => item.projectId);
-    let projects = await Project.find({ _id: { $in: projectIds } });
+    if (!updatedProject) {
+      return res.status(404).json({ message: "Project not found" });
+    }
 
-    const combinedData = projects.map(project => {
-      const relatedCsb02 = csb02Data.find(csb => csb.projectId === project._id.toString());
-      return {
-        ...project.toObject(),
-        csb02: relatedCsb02 || null 
-      };
-    });
-
-    res.json({ body: combinedData });
+    res.json({ message: "CSB02 updated successfully", project: updatedProject });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error fetching data' });
+    res.status(500).json({ message: "Error updating CSB02" });
   }
 });
 
-app.post("/createCSB02", async (req, res) => {
-    const { projectId, confirmScore, unconfirmScore, logBookScore,csb02Status, referee } = req.body;
+app.post("/approveCSB02", async (req, res) => {
+  const { projectId } = req.body.params;
+  console.log(projectId)
+  if (!projectId) {
+    return res.status(400).send({ message: "Invalid project ID" });
+  }
 
-    // Validate the data
-    if (!projectId || confirmScore === undefined || unconfirmScore === undefined || !Array.isArray(referee)) {
-        return res.status(400).send({ message: "Invalid input data" });
+  try {
+    const updatedProject = await csb02.findOneAndUpdate(
+      projectId,
+      {
+        "status.CSB02.activeStatus": activeStatus,
+        "status.CSB02.status": status || "waiting",
+        "status.CSB02.date": new Date() 
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
     }
 
-    try {
-        // Create a new csb01 document
-        const newCSB02 = new csb02({
-            projectId,
-            confirmScore,
-            unconfirmScore,
-            logBookScore,
-            csb02Status,
-            referee,
-        });
-
-        // Save the document to the database
-        const savedData = await newCSB02.save();
-        res.status(201).send({ message: "CSB02 data created successfully!", data: savedData });
-    } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Server error, please try again." });
-    }
+    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Server error, please try again." });
+  }
 });
 
-app.post("/approveCSB02", async (req, res) => {
+app.post("/rejectCSB02", async (req, res) => {
+  const { projectId } = req.body;
+
+  if (!projectId) {
+    return res.status(400).send({ message: "Invalid project ID" });
+  }
+
+  try {
+    const updatedProject = await csb02.findByIdAndUpdate(
+      projectId,
+      { $set: { "csb02Status.activeStatus": 0, "csb02Status.status": "failed" } }, // Reject the project
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
+    }
+
+    res.status(200).send({ message: "Project rejected successfully!", data: updatedProject });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Server error, please try again." });
+  }
+});
+
+
+//activecsb03
+
+app.post("/student-csb03", async (req, res) => {
+  const { projectId, activeStatus, status } = req.body; 
+
+  try {
+
+    const updatedProject = await Project.findOneAndUpdate(
+      projectId,
+      {
+        "status.CSB03.activeStatus": activeStatus,
+        "status.CSB03.status": status || "waiting",
+        "status.CSB03.date": new Date() 
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.json({ message: "CSB03 updated successfully", project: updatedProject });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating CSB02" });
+  }
+});
+
+app.post("/approveCSB03", async (req, res) => {
   const { projectId } = req.body;
   console.log(projectId)
   if (!projectId) {
@@ -403,8 +466,12 @@ app.post("/approveCSB02", async (req, res) => {
 
   try {
     const updatedProject = await csb02.findOneAndUpdate(
-      {projectId},
-      { $set: { "csb02Status.activeStatus": 2, "csb02Status.status": "teatherapproveCSB02" } }, 
+      projectId,
+      {
+        "status.CSB03.activeStatus": activeStatus,
+        "status.CSB03.status": status || "passed",
+        "status.CSB03.date": new Date() 
+      },
       { new: true }
     );
 
@@ -419,54 +486,7 @@ app.post("/approveCSB02", async (req, res) => {
   }
 });
 
-// app.post("/rejectCSB02", async (req, res) => {
-//   const { projectId } = req.body;
-
-//   if (!projectId) {
-//     return res.status(400).send({ message: "Invalid project ID" });
-//   }
-
-//   try {
-//     const updatedProject = await csb02.findByIdAndUpdate(
-//       projectId,
-//       { $set: { "csb02Status.activeStatus": 0, "csb02Status.status": "failed" } }, // Reject the project
-//       { new: true }
-//     );
-
-//     if (!updatedProject) {
-//       return res.status(404).send({ message: "Project not found" });
-//     }
-
-//     res.status(200).send({ message: "Project rejected successfully!", data: updatedProject });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).send({ message: "Server error, please try again." });
-//   }
-// });
-
-
-app.post("/createCSB03", async (req, res) => {
-  const { projectId,csb03Status } = req.body;
-
-  if (!projectId) {
-      return res.status(400).send({ message: "Invalid input data" });
-  }
-
-  try {
-      const newCSB03 = new csb03({
-          projectId,
-          csb03Status,
-      });
-
-      const savedData = await newCSB03.save();
-      res.status(201).send({ message: "CSB03 data created successfully!", data: savedData });
-  } catch (error) {
-      console.error(error);
-      res.status(500).send({ message: "Server error, please try again." });
-  }
-});
-
-app.post("/approveCSB03", async (req, res) => {
+app.post("/rejectCSB03", async (req, res) => {
   const { projectId } = req.body;
 
   if (!projectId) {
@@ -474,9 +494,9 @@ app.post("/approveCSB03", async (req, res) => {
   }
 
   try {
-    const updatedProject = await csb03.findByIdAndUpdate(
+    const updatedProject = await csb02.findByIdAndUpdate(
       projectId,
-      { $set: { "csb03Status.activeStatus": 2, "csb03Status.status": "passed" } }, // Approve the project
+      { $set: { "csb02Status.activeStatus": 0, "csb02Status.status": "failed" } }, // Reject the project
       { new: true }
     );
 
@@ -484,54 +504,7 @@ app.post("/approveCSB03", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Server error, please try again." });
-  }
-});
-
-
-app.post("/createCSB04", async (req, res) => {
-  const { projectId,csb04Status } = req.body;
-
-  if (!projectId) {
-      return res.status(400).send({ message: "Invalid input data" });
-  }
-
-  try {
-      const newCSB04 = new csb03({
-          projectId,
-          csb04Status,
-      });
-
-      const savedData = await newCSB04.save();
-      res.status(201).send({ message: "CSB04 data created successfully!", data: savedData });
-  } catch (error) {
-      console.error(error);
-      res.status(500).send({ message: "Server error, please try again." });
-  }
-});
-
-app.post("/approveCSB04", async (req, res) => {
-  const { projectId } = req.body;
-
-  if (!projectId) {
-    return res.status(400).send({ message: "Invalid project ID" });
-  }
-
-  try {
-    const updatedProject = await csb03.findByIdAndUpdate(
-      projectId,
-      { $set: { "csb04Status.activeStatus": 2, "csb04Status.status": "passed" } }, // Approve the project
-      { new: true }
-    );
-
-    if (!updatedProject) {
-      return res.status(404).send({ message: "Project not found" });
-    }
-
-    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+    res.status(200).send({ message: "Project rejected successfully!", data: updatedProject });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
@@ -846,7 +819,7 @@ app.get("/room-management", async (req, res) => {
 
 
 app.get("/auth/login", async (req, res) => {
-  const token = req.header("Authorization");
+  const token = req.header("Authorization").split(" ")[1];
 
   if (!token) {
     return res.status(401).json({ message: "Missing token" });
@@ -854,9 +827,11 @@ app.get("/auth/login", async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("Decoded token:", decoded);
+    
     const role = decoded.role;
 
-    if (role !== "student" || role !== "teacher" || role !== "admin") {
+    if (role !== "student" && role !== "teacher" && role !== "admin") {
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -875,7 +850,8 @@ app.post("/auth/login", async (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ message: "Missing credentials" });
   }
-
+  console.log(username, password);
+  
   try {
     const formData = new FormData();
     formData.append("username", username);
@@ -898,17 +874,68 @@ app.post("/auth/login", async (req, res) => {
     );
 
     if (response.data.api_status == "success"){
-      const jwtToken = jwt.sign(
-        { username: response.data.username, role: "student", level: "student" },
-        process.env.JWT_SECRET
-      );
+      console.log(response.data);
       
-      return res.json({username: response.data.userInfo.username, role: "student", level: "student",jwtToken});
-    }
+      const role = response.data.userInfo.account_type;
+      if (role === "students") {
 
-    if (response.data.api_status !== "success") {
-      const teacher = await Teacher.findOne({ T_id: username, T_password: password });
-      if (teacher){
+        //find student by username in student if not exist create one
+
+        const student = await Students.findOne({ S_id: username });
+
+        if (!student) {
+          const newStudent = new Students({
+            S_id: username,
+            S_name: response.data.userInfo.displayname,
+            S_email: response.data.userInfo.email,
+            S_pid: response.data.userInfo.pid,
+            S_account_type: response.data.userInfo.account_type,
+          });
+
+          newStudent.save();
+          const jwtToken = jwt.sign(
+            { username: response.data.userInfo.username, role: "student", level: "student" },
+            process.env.JWT_SECRET
+          );
+          return res.json({username: response.data.userInfo.username, role: "student", level: "student", jwtToken});
+        }
+      }
+
+      if (role === "personel") {        
+        if (adminUser.includes(username)) {
+          //find admin by username in student if not exist create one
+
+          const admin = await Admin.findOne({ A_id: username });
+
+          if (!admin) {
+            const newAdmin = new Admin({
+              A_id: username,
+              A_name: response.data.userInfo.displayname,
+              A_email: response.data.userInfo.email,
+              A_pid: response.data.userInfo.pid,
+              A_account_type: response.data.userInfo.account_type,
+            });
+          }
+
+          newAdmin.save();
+          const jwtToken = jwt.sign(
+            { username, role: "admin", level: "admin" },
+            process.env.JWT_SECRET
+          );
+          return res.json({username, role: "admin", level: "admin", jwtToken});
+        }
+
+        const teacher = await Teacher.findOne({ T_id: username });
+        if (!teacher) {
+          const newTeacher = new Teacher({
+            T_id: username,
+            T_name: response.data.userInfo.displayname,
+            T_email: response.data.userInfo.email,
+            T_pid: response.data.userInfo.pid,
+            T_account_type: response.data.userInfo.account_type,
+          });
+        }
+        newTeacher.save();
         const jwtToken = jwt.sign(
           { username: teacher.T_id, role: "teacher", level: teacher.T_super_role },
           process.env.JWT_SECRET
@@ -916,19 +943,12 @@ app.post("/auth/login", async (req, res) => {
         return res.json({username: teacher.T_id, role: "teacher", level: teacher.T_super_role ,jwtToken});
       }
 
-      const admin = await Admin.findOne({ A_id: username, A_password: password });
-      if (admin){
-        const jwtToken = jwt.sign(
-          { username: admin.A_id, role: "admin", level: "admin" },
-          process.env.JWT_SECRET
-        );
-        return res.json({username: admin.A_id, role: "admin", level: "admin",jwtToken});
-      }
-    }
-  } catch (error) {
-  
+      return res.status(403).json({ message: "Forbidden" });
+  }} catch (error) {
+    console.error("Error in login:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
+
 });
 
 app.post("/auth/info", async (req, res) => {
@@ -1191,7 +1211,5 @@ app.patch("/files/:fi_id", async (req, res) => {
       res.status(500).json({ message: "Error updating file status." });
     }
   });
-
-
 
 module.exports = app;
