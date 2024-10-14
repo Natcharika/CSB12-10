@@ -142,34 +142,37 @@ def check(file_path, student_id):
 
         if student_id:
             if total_credits >= 102 and (current_code.startswith('040613404') or current_code.startswith('040613405')):
-                result = f"Pass: Student has passed all credit requirements."
-                return print(update_results_in_mongodb(student_id,result))
+                logging.info(f"Pass: Student has passed all credit requirements.")
+                # result = f"Pass: Student has passed all credit requirements."
             else:
                 results = []
                 if total_credits < 102:
-                    results.append(f"Fail: Student {student_id} has insufficient total credits (has {total_credits}, needs 135).")
+                    logging.info(f"Fail: Student {student_id} has insufficient total credits (has {total_credits}, needs 135).")
+                    # results.append(f"Fail: Student {student_id} has insufficient total credits (has {total_credits}, needs 135).")
                 if not current_code.startswith('040613404'):
-                    results.append(f"Fail: Student {student_id} don't have SP1 credits")
+                   logging.info(f"Fail: Student {student_id} don't have SP1 credits")
+                    # results.append(f"Fail: Student {student_id} don't have SP1 credits")
                 if not current_code.startswith('040613405'):
-                    results.append(f"Fail: Student {student_id} don't have SP2 credits")
-            result = ";\n".join(results)
-            print(result)
-            return print(update_results_in_mongodb(student_id,result))
+                    logging.info(f"Fail: Student {student_id} don't have SP2 credits")
+                    # results.append(f"Fail: Student {student_id} don't have SP2 credits")
+            # result = ";\n".join(results)
     except Exception as e:
         logging.error(f"Error processing PDF: {e}")
 
 def main():
-    if len(sys.argv) != 2:
-        # print("Usage: python script.py <student_id>")
-        sys.exit(1)
+    # if len(sys.argv) != 2:
+    #     # print("Usage: python script.py <student_id>")
+    #     sys.exit(1)
 
-    student_id = sys.argv[1]
-    files = get_files_from_mongodb(student_id)
+    # student_id = sys.argv[1]
+    # files = get_files_from_mongodb(student_id)
+    student_id = "6304062636120"
+    files = "/upload/6304062636120"
     # print(student_id)
 
-    if not files:
-        print(f"No files found for student ID: {student_id}")
-        sys.exit(1)
+    # if not files:
+    #     print(f"No files found for student ID: {student_id}")
+    #     sys.exit(1)
 
     for file_path in files:
         if file_path and isinstance(file_path, str) and file_path.endswith('.pdf'):

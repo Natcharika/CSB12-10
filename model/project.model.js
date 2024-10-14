@@ -20,7 +20,7 @@ const projectSchema = new mongoose.Schema({
             status: {type: String, enum: ["waiting", "failed", "passed"], default: "waiting"},
         },
         CSB02: {
-            activeStatus: { type: Number, enum: [0, 1, 2], default: 0 }, // 0: nothing, 1: student action, 2: lecturer action
+            activeStatus: { type: Number, enum: [0, 1, 2], default: 0 }, 
             status: {type: String, enum: ["waiting", "failed", "passed"], default: "waiting"},
             date: { type: Date, default: Date.now }
         },

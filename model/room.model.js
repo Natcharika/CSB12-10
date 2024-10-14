@@ -9,7 +9,7 @@ const roomSchema = new mongoose.Schema({
         projectName: String,
         start_in_time: String,
     }],
-    referees: [{
+    teachers: [{ // Updated from referees to teachers
         T_id: String,
         T_name: String,
         role: String,

@@ -23,7 +23,10 @@ const axios = require("axios");
 const Admin = require("./model/admin.model");
 const Teacher = require("./model/teacher.model");
 const file = require("./model/file.model");
-
+const csb01 = require("./model/csb01.model")
+const csb02 = require("./model/csb02.model")
+const csb03 = require("./model/csb03.model")
+const csb04 = require("./model/csb04.model")
 
 const app = express();
 app.use(cors());
@@ -137,9 +140,7 @@ app.post("/create-form", async (req, res) => {
       projectType,
       projectStatus,
       projectDescription,
-      student,
-      lecturer,
-      status,
+      student
     } = req.body.data; // Accessing properties inside 'data'
 
     // Validate required fields
@@ -153,86 +154,17 @@ app.post("/create-form", async (req, res) => {
 
     console.log("Received body:", req.body); // Log the entire body
     // Create a new project
-    const projects = await Project.create({
+    const projects = new Project  ({
       projectName,
       projectType,
       projectStatus,
       projectDescription,
-      student,
-      lecturer,
-      status: {
-        CSB02: {
-          activeStatus: 0, 
-          date: new Date(), 
-        },
-        CSB03: {
-          activeStatus: 0,
-          date: new Date(),
-        },
-        CSB04: {
-          activeStatus: 0,
-          date: new Date(),
-        },
-      },
-      scoreId: "",
+      student
     });
 
-    // Create a new score document associated with the project
-    const scores = await Score.create({
-      projectId: projects._id,
-      CSB01: {
-        roomExam: "",
-        dateExam: "",
-        referee: [],
-        limitReferee: 0,
-        totalScore: 0,
-        limitScore: 0,
-        activeStatus: 0,
-        resultStatus: 0,
-      },
-      CSB02: {
-        score: 0,
-        status: "",
-        referee: [],
-        limitReferee: 0,
-        totalScore: 0,
-        limitScore: 0,
-        activeStatus: 0,
-        resultStatus: 0,
-      },
-      CSB03: {
-        student: [
-          {
-            studentId: "",
-          },
-        ],
-        start_in_date: "",
-        end_in_date: "",
-        referee: [
-          {
-            keyTeacher: "",
-            status: 0,
-          },
-        ],
-        activeStatus: 0,
-        resultStatus: 0,
-      },
-      CSB04: {
-        score: 0,
-        status: "",
-        referee: [],
-        limitReferee: 0,
-        totalScore: 0,
-        limitScore: 0,
-        activeStatus: 0,
-        resultStatus: 0,
-      },
-    });
+    // await Project.findByIdAndUpdate(projects._id);
 
-    // Update the project with the score ID
-    await Project.findByIdAndUpdate(projects._id, { scoreId: scores._id });
-
-    res.json({ body: { score: scores, project: projects } });
+    res.json({ body: { project: projects } });
   } catch (error) {
     console.error("Error creating project and score:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -245,14 +177,74 @@ app.post("/create-form", async (req, res) => {
 
 
 // สร้างห้องสอบ
+// app.post("/create-room-management", async (req, res) => {
+//   try {
+//     const { roomExam, nameExam, dateExam, referees, projects } = req.body;
+//     const room = await Room.create({
+//       roomExam,
+//       nameExam,
+//       dateExam,
+//       referees,
+//       projects,
+//     });
+
+//     for (const project of projects) {
+//       const { projectId } = project;
+//       const scoreUpdate = {
+//         roomExam,
+//         dateExam,
+//         referee: referees.map(
+//           ({ keyLecturer, nameLecturer, roleLecturer }) => ({
+//             keyLecturer,
+//             nameLecturer,
+//             roleLecturer,
+//             score: 0,
+//           })
+//         ),
+//         limitReferee: referees.length,
+//         totalScore: 0,
+//         limitScore: 100,
+//         resultStatus: 0,
+//       };
+//       const examField = `CSB${nameExam.split("CSB")[1]}`;
+//       await Score.findOneAndUpdate(
+//         { projectId },
+//         {
+//           $set: {
+//             [`${examField}.roomExam`]: scoreUpdate.roomExam,
+//             [`${examField}.dateExam`]: scoreUpdate.dateExam,
+//             [`${examField}.referee`]: scoreUpdate.referee,
+//             [`${examField}.limitReferee`]: scoreUpdate.limitReferee,
+//             [`${examField}.totalScore`]: scoreUpdate.totalScore,
+//             [`${examField}.limitScore`]: scoreUpdate.limitScore,
+//             [`${examField}.activeStatus`]: scoreUpdate.activeStatus,
+//             [`${examField}.resultStatus`]: scoreUpdate.resultStatus,
+//           },
+//         },
+//         { new: true, upsert: true }
+//       );
+//     }
+//     res.json({ message: "Room management and score updated successfully!" });
+//   } catch (error) {
+//     console.error("Error in creating room management:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
+
+// Updated route to reflect changes
 app.post("/create-room-management", async (req, res) => {
   try {
-    const { roomExam, nameExam, dateExam, referees, projects } = req.body;
+    const { roomExam, nameExam, dateExam, teachers, projects } = req.body; // Updated referees to teachers
+    if (!teachers || !Array.isArray(teachers)) {
+      return res.status(400).json({ error: "Teachers must be a defined array" });
+    }
+
     const room = await Room.create({
       roomExam,
       nameExam,
       dateExam,
-      referees,
+      teachers, // Updated referees to teachers
       projects,
     });
 
@@ -261,15 +253,15 @@ app.post("/create-room-management", async (req, res) => {
       const scoreUpdate = {
         roomExam,
         dateExam,
-        referee: referees.map(
-          ({ keyLecturer, nameLecturer, roleLecturer }) => ({
-            keyLecturer,
-            nameLecturer,
-            roleLecturer,
+        referee: teachers.map( // Updated referees to teachers
+          ({ T_id, T_name, role }) => ({
+            T_id,
+            T_name,
+            role,
             score: 0,
           })
         ),
-        limitReferee: referees.length,
+        limitReferee: teachers.length, // Updated referees to teachers
         totalScore: 0,
         limitScore: 100,
         resultStatus: 0,
@@ -281,7 +273,7 @@ app.post("/create-room-management", async (req, res) => {
           $set: {
             [`${examField}.roomExam`]: scoreUpdate.roomExam,
             [`${examField}.dateExam`]: scoreUpdate.dateExam,
-            [`${examField}.referee`]: scoreUpdate.referee,
+            [`${examField}.referees`]: scoreUpdate.referee, // Retain referees field for Score schema
             [`${examField}.limitReferee`]: scoreUpdate.limitReferee,
             [`${examField}.totalScore`]: scoreUpdate.totalScore,
             [`${examField}.limitScore`]: scoreUpdate.limitScore,
@@ -298,6 +290,257 @@ app.post("/create-room-management", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
+
+//แต่งตั้งหัวหน้าภาค
+app.post("/appointHeadOfDepartment", async (req, res) => {
+  try {
+    const { T_id, T_name, T_super_role } = req.body;
+
+    // Validate the input data
+    if (!T_id || !T_name || !T_super_role) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    // Check if a Head of Department is already appointed
+    const existingHead = await Teacher.findOne({ T_super_role: "Head of Department" });
+
+    if (existingHead) {
+      // If there is an existing Head, update their role to something else
+      await Teacher.findByIdAndUpdate(existingHead._id, {
+        $set: { T_super_role: "Teacher" } // or another appropriate role
+      });
+    }
+
+    // Now appoint the new Head of Department
+    const updatedTeacher = await Teacher.findOneAndUpdate(
+      { T_id },
+      {
+        $set: {
+          T_name,
+          T_super_role, // Assign the new role as Head of Department
+        },
+      },
+      { new: true, upsert: true }
+    );
+
+    if (!updatedTeacher) {
+      return res.status(404).json({ error: "Teacher not found" });
+    }
+
+    res.json({ message: "Head of Department appointed successfully", teacher: updatedTeacher });
+  } catch (error) {
+    console.error("Error in appointing Head of Department:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+
+
+
+
+
+
+// POST route to create a new csb01 document
+app.get("/csb02", async (req, res) => {
+  try {
+
+    let csb02Data = await csb02.find();
+    const projectIds = csb02Data.map(item => item.projectId);
+    let projects = await Project.find({ _id: { $in: projectIds } });
+
+    const combinedData = projects.map(project => {
+      const relatedCsb02 = csb02Data.find(csb => csb.projectId === project._id.toString());
+      return {
+        ...project.toObject(),
+        csb02: relatedCsb02 || null 
+      };
+    });
+
+    res.json({ body: combinedData });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error fetching data' });
+  }
+});
+
+app.post("/createCSB02", async (req, res) => {
+    const { projectId, confirmScore, unconfirmScore, logBookScore,csb02Status, referee } = req.body;
+
+    // Validate the data
+    if (!projectId || confirmScore === undefined || unconfirmScore === undefined || !Array.isArray(referee)) {
+        return res.status(400).send({ message: "Invalid input data" });
+    }
+
+    try {
+        // Create a new csb01 document
+        const newCSB02 = new csb02({
+            projectId,
+            confirmScore,
+            unconfirmScore,
+            logBookScore,
+            csb02Status,
+            referee,
+        });
+
+        // Save the document to the database
+        const savedData = await newCSB02.save();
+        res.status(201).send({ message: "CSB02 data created successfully!", data: savedData });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Server error, please try again." });
+    }
+});
+
+app.post("/approveCSB02", async (req, res) => {
+  const { projectId } = req.body;
+  console.log(projectId)
+  if (!projectId) {
+    return res.status(400).send({ message: "Invalid project ID" });
+  }
+
+  try {
+    const updatedProject = await csb02.findOneAndUpdate(
+      {projectId},
+      { $set: { "csb02Status.activeStatus": 2, "csb02Status.status": "teatherapproveCSB02" } }, 
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
+    }
+
+    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Server error, please try again." });
+  }
+});
+
+// app.post("/rejectCSB02", async (req, res) => {
+//   const { projectId } = req.body;
+
+//   if (!projectId) {
+//     return res.status(400).send({ message: "Invalid project ID" });
+//   }
+
+//   try {
+//     const updatedProject = await csb02.findByIdAndUpdate(
+//       projectId,
+//       { $set: { "csb02Status.activeStatus": 0, "csb02Status.status": "failed" } }, // Reject the project
+//       { new: true }
+//     );
+
+//     if (!updatedProject) {
+//       return res.status(404).send({ message: "Project not found" });
+//     }
+
+//     res.status(200).send({ message: "Project rejected successfully!", data: updatedProject });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send({ message: "Server error, please try again." });
+//   }
+// });
+
+
+app.post("/createCSB03", async (req, res) => {
+  const { projectId,csb03Status } = req.body;
+
+  if (!projectId) {
+      return res.status(400).send({ message: "Invalid input data" });
+  }
+
+  try {
+      const newCSB03 = new csb03({
+          projectId,
+          csb03Status,
+      });
+
+      const savedData = await newCSB03.save();
+      res.status(201).send({ message: "CSB03 data created successfully!", data: savedData });
+  } catch (error) {
+      console.error(error);
+      res.status(500).send({ message: "Server error, please try again." });
+  }
+});
+
+app.post("/approveCSB03", async (req, res) => {
+  const { projectId } = req.body;
+
+  if (!projectId) {
+    return res.status(400).send({ message: "Invalid project ID" });
+  }
+
+  try {
+    const updatedProject = await csb03.findByIdAndUpdate(
+      projectId,
+      { $set: { "csb03Status.activeStatus": 2, "csb03Status.status": "passed" } }, // Approve the project
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
+    }
+
+    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Server error, please try again." });
+  }
+});
+
+
+app.post("/createCSB04", async (req, res) => {
+  const { projectId,csb04Status } = req.body;
+
+  if (!projectId) {
+      return res.status(400).send({ message: "Invalid input data" });
+  }
+
+  try {
+      const newCSB04 = new csb03({
+          projectId,
+          csb04Status,
+      });
+
+      const savedData = await newCSB04.save();
+      res.status(201).send({ message: "CSB04 data created successfully!", data: savedData });
+  } catch (error) {
+      console.error(error);
+      res.status(500).send({ message: "Server error, please try again." });
+  }
+});
+
+app.post("/approveCSB04", async (req, res) => {
+  const { projectId } = req.body;
+
+  if (!projectId) {
+    return res.status(400).send({ message: "Invalid project ID" });
+  }
+
+  try {
+    const updatedProject = await csb03.findByIdAndUpdate(
+      projectId,
+      { $set: { "csb04Status.activeStatus": 2, "csb04Status.status": "passed" } }, // Approve the project
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
+    }
+
+    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Server error, please try again." });
+  }
+});
+
+
+
+
 
 
 
@@ -356,6 +599,13 @@ app.get("/sumary-room", async (req, res) => {
   let room = await Room.find();
   res.json({ body: room });
 });
+
+app.get("/room-management", async (req, res) => {
+  let room = await Room.find();
+  res.json({ body: room });
+});
+
+
 
 
 // app.post("/create-user", async (req, res) => {
@@ -595,7 +845,29 @@ app.get("/sumary-room", async (req, res) => {
 
 
 
+app.get("/auth/login", async (req, res) => {
+  const token = req.header("Authorization");
 
+  if (!token) {
+    return res.status(401).json({ message: "Missing token" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const role = decoded.role;
+
+    if (role !== "student" || role !== "teacher" || role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const newToken = jwt.sign({ username: decoded.username, role : decoded.role, level: decoded.level }, process.env.JWT_SECRET);
+
+    res.json({ username: decoded.username, role : decoded.role, level: decoded.level, jwtToken: newToken });
+  } catch (error) {
+    console.error("Error in verifying token:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+})
 
 app.post("/auth/login", async (req, res) => {
   let { username, password } = req.body;
@@ -625,11 +897,36 @@ app.post("/auth/login", async (req, res) => {
       headersConfig
     );
 
-    console.log(response.data);
-    
-    return res.json(response.data);
+    if (response.data.api_status == "success"){
+      const jwtToken = jwt.sign(
+        { username: response.data.username, role: "student", level: "student" },
+        process.env.JWT_SECRET
+      );
+      
+      return res.json({username: response.data.userInfo.username, role: "student", level: "student",jwtToken});
+    }
+
+    if (response.data.api_status !== "success") {
+      const teacher = await Teacher.findOne({ T_id: username, T_password: password });
+      if (teacher){
+        const jwtToken = jwt.sign(
+          { username: teacher.T_id, role: "teacher", level: teacher.T_super_role },
+          process.env.JWT_SECRET
+        );
+        return res.json({username: teacher.T_id, role: "teacher", level: teacher.T_super_role ,jwtToken});
+      }
+
+      const admin = await Admin.findOne({ A_id: username, A_password: password });
+      if (admin){
+        const jwtToken = jwt.sign(
+          { username: admin.A_id, role: "admin", level: "admin" },
+          process.env.JWT_SECRET
+        );
+        return res.json({username: admin.A_id, role: "admin", level: "admin",jwtToken});
+      }
+    }
   } catch (error) {
-    console.error("Error in login:", error);
+  
     return res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -754,30 +1051,53 @@ app.post('/teacher', (req, res) => {
   res.status(201).send('Teacher created successfully');
 });
 
-app.post('/assignteacher', async(req, res) => {
+// app.post('/assignteacher', async(req, res) => {
+//   const project = await Project.findOne({ projectId: req.body.projectId });
+//   // req.body.T_id = [T_id] find every teacher in the array
+//   const teacher = await Teacher.find({ T_id: { $in: req.body.T_id } });
+//   console.log("Project:", project);
+//   console.log("Teacher:", teacher);
+  
+//   if (!project) {
+//     return res.status(404).json({ message: "Project not found" });
+//   }
+
+//   if (!teacher) {
+//     return res.status(404).json({ message: "Teacher not found" });
+//   }
+
+//   // update project with teacher only T_id and T_name
+//   try{
+//     await Project.findByIdAndUpdate(project._id, { lecturer: teacher });
+//     res.json({ body: project });
+//   } catch (error) { 
+//     console.error("Error assigning teacher:", error);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// })
+app.post('/assignteacher', async (req, res) => {
   const project = await Project.findOne({ projectId: req.body.projectId });
   // req.body.T_id = [T_id] find every teacher in the array
   const teacher = await Teacher.find({ T_id: { $in: req.body.T_id } });
-  console.log("Project:", project);
-  console.log("Teacher:", teacher);
   
   if (!project) {
     return res.status(404).json({ message: "Project not found" });
   }
 
-  if (!teacher) {
+  if (!teacher || teacher.length === 0) {
     return res.status(404).json({ message: "Teacher not found" });
   }
 
   // update project with teacher only T_id and T_name
-  try{
+  try {
     await Project.findByIdAndUpdate(project._id, { lecturer: teacher });
-    res.json({ body: project });
+    // No response returned
   } catch (error) { 
     console.error("Error assigning teacher:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-})
+});
+
 
 
 //ocr
@@ -871,5 +1191,7 @@ app.patch("/files/:fi_id", async (req, res) => {
       res.status(500).json({ message: "Error updating file status." });
     }
   });
+
+
 
 module.exports = app;

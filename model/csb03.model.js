@@ -2,7 +2,11 @@ const mongoose = require('mongoose');
 
 const csb03Schema = new mongoose.Schema({
     projectId: String,
-    status: String,
+    csb03Status: {
+        activeStatus: { type: Number, enum: [0, 1, 2], default: 0 }, // 0: nothing, 1: student action, 2: lecturer action
+        status: {type: String, enum: ["waiting", "failed", "passed"], default: "waiting"},
+        date: { type: Date, default: Date.now }
+    },
 });
 
 module.exports = mongoose.model('csb03', csb03Schema);
