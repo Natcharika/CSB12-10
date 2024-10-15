@@ -959,7 +959,8 @@ app.get("/csb04", async (req, res) => {
 });
 
 app.post("/chair-csb04", async (req, res) => {
-  const { projectId, confirmScore, logBookScore } = req.body.params;
+  const { projectId, confirmScore, logBookScore, exhibitionScore } =
+    req.body.params;
 
   try {
     // Check if an entry for the project already exists
@@ -969,6 +970,7 @@ app.post("/chair-csb04", async (req, res) => {
       // Update existing entry
       existingCsb04.confirmScore = confirmScore;
       existingCsb04.logBookScore = logBookScore;
+      existingCsb04.logBookScore = exhibitionScore;
       await existingCsb04.save();
       return res.json({
         message: "CSB03 updated successfully!",
@@ -976,7 +978,12 @@ app.post("/chair-csb04", async (req, res) => {
       });
     } else {
       // Create a new entry
-      const newCsb04 = new csb02({ projectId, confirmScore, logBookScore });
+      const newCsb04 = new csb04({
+        projectId,
+        confirmScore,
+        logBookScore,
+        exhibitionScore,
+      });
       await newCsb04.save();
       return res.json({
         message: "CSB03 created successfully!",
@@ -992,15 +999,41 @@ app.post("/chair-csb04", async (req, res) => {
 });
 
 app.post("/depart-csb04", async (req, res) => {
-  const { projectId, confirmScore } = req.body.params;
+  const { projectId, activeStatus } = req.body.params;
+
+  // Validate input
+  if (!projectId || activeStatus === undefined) {
+    return res
+      .status(400)
+      .send({ message: "projectId and activeStatus are required." });
+  }
 
   try {
-    let existingCsb02 = await csb02.findOne({ projectId });
+    const updatedProject = await Project.findOneAndUpdate(
+      { _id: projectId },
+      {
+        "status.CSB04.activeStatus": activeStatus,
+        "status.CSB04.status": "passed",
+        "status.CSB04.date": new Date(),
+      },
+      { new: true }
+    );
 
-    if (existingCsb02) {
-    } else {
+    // Check if the project was found and updated
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
     }
-  } catch (error) {}
+
+    // Send a success response
+    res
+      .status(200)
+      .json({ message: "Score updated successfully", updatedProject });
+  } catch (error) {
+    console.error("Error updating score:", error);
+    res
+      .status(500)
+      .json({ message: "Error updating score", error: error.message });
+  }
 });
 
 app.get("/teachers", async (req, res) => {
@@ -1243,30 +1276,7 @@ app.post("/auth/login", async (req, res) => {
   }
 });
 
-app.post('/assignteacher', async(req, res) => {
-  const project = await Project.findOne({ projectId: req.body.projectId });
-  const teacher = await Teacher.find({ T_id: { $in: req.body.T_id } });
-  console.log("Project:", project);
-  console.log("Teacher:", teacher);
-
-  if (!project) {
-    return res.status(404).json({ message: "Project not found" });
-  }
-
-  if (!teacher) {
-    return res.status(404).json({ message: "Teacher not found" });
-  }
-
-  try{
-    await Project.findByIdAndUpdate(project._id, { lecturer: teacher });
-    res.json({ body: project });
-  } catch (error) {
-    console.error("Error assigning teacher:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-})
-
-// app.post("/assignteacher", async (req, res) => {
+// app.post('/assignteacher', async(req, res) => {
 //   const project = await Project.findOne({ projectId: req.body.projectId });
 //   const teacher = await Teacher.find({ T_id: { $in: req.body.T_id } });
 
@@ -1274,16 +1284,48 @@ app.post('/assignteacher', async(req, res) => {
 //     return res.status(404).json({ message: "Project not found" });
 //   }
 
-//   if (!teacher || teacher.length === 0) {
+//   if (!teacher) {
 //     return res.status(404).json({ message: "Teacher not found" });
 //   }
-//   try {
+
+//   try{
 //     await Project.findByIdAndUpdate(project._id, { lecturer: teacher });
+//     res.json({ body: project });
 //   } catch (error) {
 //     console.error("Error assigning teacher:", error);
 //     res.status(500).json({ message: "Internal Server Error" });
 //   }
-// });
+// })
+
+app.post("/assignteacher", async (req, res) => {
+  console.log("Received request:", req.body.params);
+  const { projectId, T_name } = req.body.params; // Adjusted to destructure directly from req.body
+
+  const project = await Project.findById(projectId);
+console.log("Project found:", project); // Use findById for a direct lookup
+  const teachers = await Teacher.find({ T_id: { $in: T_name } }); // Match by T_id
+
+  if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+  }
+
+  if (!teachers || teachers.length === 0) {
+      return res.status(404).json({ message: "Teacher not found" });
+  }
+  console.log("Teachers found:", teachers);
+
+  try {
+      // Update the project with the found teachers
+      project.lecturer = teachers; // Assign the lecturers directly
+      await project.save(); // Save the updated project
+      res.status(200).json({ message: "Lecturer assigned successfully!" }); // Return success message
+  } catch (error) {
+      console.error("Error assigning teacher:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
 
 //ocr
 const upload = multer();
