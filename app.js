@@ -197,6 +197,267 @@ app.get("/projects", async (req, res) => {
   res.json({ body: Projects });
 });
 
+//activecsb01
+app.post("/student-csb01", async (req, res) => {
+  const { projectId, activeStatus, status } = req.body.params;
+  try {
+    console.log(
+      new Date().toLocaleString("en-TH", { timeZone: "Asia/Bangkok" })
+    );
+
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId,
+      {
+        "status.CSB01.activeStatus": activeStatus,
+        "status.CSB01.status": status || "waiting",
+        "status.CSB01.date": new Date(),
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.json({
+      message: "CSB01 updated successfully",
+      project: updatedProject,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating CSB01" });
+  }
+});
+
+// app.post("/approveCSB01", async (req, res) => {
+//   const { projectId, activeStatus } = req.body.params;
+//   try {
+//     const updatedProject = await Project.findOneAndUpdate(
+//         projectId ,
+//       {
+//         "status.CSB01.activeStatus": activeStatus,
+//         "status.CSB01.status": "approved",
+//         "status.CSB01.date": new Date(),
+//       },
+//       { new: true }
+//     );
+
+//     if (!updatedProject) {
+//       return res.status(404).send({ message: "Project not found" });
+//     }
+
+//     res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send({ message: "Server error, please try again." });
+//   }
+// });
+
+app.post("/approveCSB01", async (req, res) => {
+  const { projectId, activeStatus } = req.body.params; // Change this to req.body directly
+
+  // Check if projectId and activeStatus are provided
+  if (!projectId || activeStatus === undefined) {
+    return res
+      .status(400)
+      .send({ message: "projectId and activeStatus are required." });
+  }
+
+  try {
+    const updatedProject = await Project.findOneAndUpdate(
+      { _id: projectId }, // Ensure you're using an object for the query
+      {
+        "status.CSB01.activeStatus": activeStatus,
+        "status.CSB01.status": "approved",
+        "status.CSB01.date": new Date(),
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
+    }
+
+    res.status(200).send({
+      message: "Project approved successfully!",
+      data: updatedProject,
+    });
+  } catch (error) {
+    console.error("Error approving project:", error); // More specific error logging
+    res.status(500).send({
+      message: "Server error, please try again.",
+      error: error.message,
+    });
+  }
+});
+
+app.post("/rejectCSB01", async (req, res) => {
+  const { projectId, activeStatus } = req.body.params;
+
+  if (!projectId || activeStatus === undefined) {
+    return res
+      .status(400)
+      .send({ message: "projectId and activeStatus are required." });
+  }
+
+  try {
+    const updatedProject = await Project.findOneAndUpdate(
+      { _id: projectId },
+      {
+        "status.CSB01.activeStatus": activeStatus,
+        "status.CSB01.status": "failed",
+        "status.CSB01.date": new Date(),
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
+    }
+
+    res.status(200).send({
+      message: "Project rejected successfully!",
+      data: updatedProject,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Server error, please try again." });
+  }
+});
+
+app.post("/score-csb01", async (req, res) => {
+  const { projectId, unconfirmScore, comment, referee } = req.body.params;
+
+  try {
+    // Check if a document with the given projectId already exists
+    let existingCsb01 = await csb01.findOne({ projectId });
+
+    if (existingCsb01) {
+      // Update the existing document
+      existingCsb01.unconfirmScore = unconfirmScore;
+      existingCsb01.referee = referee || [];
+      existingCsb01.comment = comment || "";
+      const updatedCsb01 = await existingCsb01.save();
+
+      // Send the updated document back with all fields included
+      res.json({
+        message: "CSB01 score updated successfully",
+        project: {
+          _id: updatedCsb01._id,
+          projectId: updatedCsb01.projectId,
+          unconfirmScore: updatedCsb01.unconfirmScore,
+          comment: updatedCsb01.comment,
+          referee: updatedCsb01.referee,
+        },
+      });
+    } else {
+      // Create a new document if it doesn't exist
+      const newCsb01 = new csb01({
+        projectId,
+        unconfirmScore,
+        referee,
+        comment,
+      });
+
+      const savedCsb01 = await newCsb01.save();
+
+      // Send the newly created document back with all fields included
+      res.json({
+        message: "CSB01 score saved successfully",
+        project: {
+          _id: savedCsb01._id,
+          projectId: savedCsb01.projectId,
+          unconfirmScore: savedCsb01.unconfirmScore,
+          comment: savedCsb01.comment,
+          referee: savedCsb01.referee,
+        },
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Error updating CSB01", error: error.message });
+  }
+});
+
+//chaircsb01
+app.get("/csb01", async (req, res) => {
+  let Csb01 = await csb01.find();
+  res.json({ body: Csb01 });
+});
+
+app.post("/chair-csb01", async (req, res) => {
+  const { projectId, confirmScore, logBookScore } = req.body.params;
+
+  try {
+    // Check if an entry for the project already exists
+    let existingCsb01 = await csb01.findOne({ projectId });
+
+    if (existingCsb01) {
+      // Update existing entry
+      existingCsb01.confirmScore = confirmScore;
+      existingCsb01.logBookScore = logBookScore;
+      await existingCsb01.save();
+      return res.json({
+        message: "CSB01 updated successfully!",
+        data: existingCsb01,
+      });
+    } else {
+      // Create a new entry
+      const newCsb01 = new csb01({ projectId, confirmScore, logBookScore });
+      await newCsb01.save();
+      return res.json({
+        message: "CSB01 created successfully!",
+        data: newCsb01,
+      });
+    }
+  } catch (error) {
+    console.error("Error saving CSB01:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error, please try again later." });
+  }
+});
+
+app.post("/depart-csb01", async (req, res) => {
+  const { projectId, activeStatus } = req.body.params;
+
+  // Validate input
+  if (!projectId || activeStatus === undefined) {
+    return res
+      .status(400)
+      .send({ message: "projectId and activeStatus are required." });
+  }
+
+  try {
+    const updatedProject = await Project.findOneAndUpdate(
+      { _id: projectId },
+      {
+        "status.CSB01.activeStatus": activeStatus,
+        "status.CSB01.status": "passed",
+        "status.CSB01.date": new Date(),
+      },
+      { new: true }
+    );
+
+    // Check if the project was found and updated
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
+    }
+
+    // Send a success response
+    res
+      .status(200)
+      .json({ message: "Score updated successfully", updatedProject });
+  } catch (error) {
+    console.error("Error updating score:", error);
+    res
+      .status(500)
+      .json({ message: "Error updating score", error: error.message });
+  }
+});
+
 //activecsb02
 app.post("/student-csb02", async (req, res) => {
   const { projectId, activeStatus, status } = req.body.params;
@@ -654,7 +915,7 @@ app.post("/score-csb04", async (req, res) => {
       const updatedCsb04 = await existingCsb04.save();
 
       res.json({
-        message: "CSB03 score updated successfully",
+        message: "CSB04 score updated successfully",
         project: {
           _id: updatedCsb04._id,
           projectId: updatedCsb04.projectId,
