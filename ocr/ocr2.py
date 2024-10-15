@@ -133,18 +133,12 @@ def check(file_path, student_id):
         
         # เก็บตัวแปรสำหรับตรวจสอบเงื่อนไข
         major_credits = len(pdf_df[pdf_df['clean_code'].str.startswith('0406')]) * 3
-        
-        passed_project_1 = False
+
         passed_project_2 = False
         # ตรวจสอบรหัสวิชาเฉพาะเพื่อลดหรือเพิ่ม major_credits
         for _, row in pdf_df.iterrows():
             clean_code = row['clean_code'] # Extract first 9 characters of the subject code
-            
-            # ตรวจสอบเงื่อนไขในการเพิ่ม/ลด major_credits
-            
-            if clean_code in ['040613404', '040613141']: # Special Project I
-                major_credits -= 2
-                passed_project_1 = True
+
             if clean_code in ['040613405', '040613142']:  # Special Project II
                 passed_project_2 = True
 
@@ -158,39 +152,15 @@ def check(file_path, student_id):
         Major credits: {major_credits} (required: 46)
         """)  
         
-        # ตรวจสอบเงื่อนไขสุดท้าย
-        if (total_credits >= 102 and 
-            major_credits >= 57 and
-            passed_project_1):
-            results = []
-            results.append(f"Pass: Student  has passed {total_credits} requirements.")
-            results.append(f"Pass: Student  has passed {major_credits} requirements.")
-            results.append(f"Pass: Student Special Project I has passed.")
-            if passed_project_2:
-                logging.info(f"Pass: Student  pass Special Project II")
-                results.append(f"Pass: Student  pass Special Project II")
-            else:
-                logging.info(f"Pass: Student  pass Special Project II")
-                results.append(f"Fail: Student not pass Special Project II")
-            result = ";\n".join(results)
-
-            return print(update_results_in_mongodb(student_id,result))
-
+        results = []
+        if passed_project_2:
+            logging.info(f"Pass: Student  pass Special Project II")
+            results.append(f"Pass: Student  pass Special Project II")
         else:
-            results = []
-            if total_credits < 102:
-                logging.info(f"Fail: Insufficient total credits (has {total_credits}, needs 102).")
-                results.append(f"Fail: Insufficient total credits (has {total_credits}, needs 102).")
-            if major_credits < 57:
-                logging.info(f"Fail: Insufficient major credits (has {major_credits}, needs 57).")
-                results.append(f"Fail: Insufficient major credits (has {major_credits}, needs 57).")
-            if not passed_project_1:
-                logging.info(f"Fail: Student not pass Special Project I")
-                results.append(f"Fail: Student not pass Special Project I")
-
+            logging.info(f"Pass: Student  pass Special Project II")
+            results.append(f"Fail: Student not pass Special Project II")
         result = ";\n".join(results)
         return print(update_results_in_mongodb(student_id,result))
-
     except Exception as e:
         logging.error(f"Error processing PDF: {e}")
 
@@ -213,16 +183,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# def main():
-#     # จบละ
-#     student_id = '6304062663038'
-#     file_path = 'upload/6304062663038/annae.pdf'    
-    
-#     if file_path and isinstance(file_path, str) and file_path.endswith('.pdf'):
-#         check(file_path, student_id)
-#     else:
-#         logging.error(f"Invalid file path: {file_path}")
-
-# if __name__ == "__main__":
-#     main()

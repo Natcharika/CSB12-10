@@ -45,95 +45,6 @@ app.get("/", async (req, res) => {
 
 
 
-// สร้าง CSB01 - CSB04
-// app.post("/create-form", async (req, res) => {
-//   const {
-//     projectName,
-//     projectType,
-//     projectStatus,
-//     projectDescription,
-//     student,
-//     lecturer,
-//   } = req.body;
-//   // status
-//   // 0: Not yet
-//   // 1: Done
-//   // 2: Cancel
-//   console.log(projectName)
-
-//   const projects = await Project.create({
-//     projectName,
-//     projectType,
-//     projectStatus,
-//     projectDescription,
-//     student,
-//     lecturer,
-//     scoreId: "",
-//   });
-
-//   // let calActiveStatus = lecturer.length + student.length; 
-//   // let activeArray = [];
-//   // calActiveStatus.map((item) => {
-//   //   activeArray.push(0);
-//   // })
-
-//   const scores = await Score.create({
-//     projectId: projects._id,
-//     CSB01: {
-//       roomExam: "",
-//       dateExam: "",
-//       referee: [],
-//       limitReferee: 0,
-//       totalScore: 0,
-//       limitScore: 0,
-//       activeStatus: 0,
-//       resultStatus: 0,
-//     },
-//     CSB02: {
-//       score: 0,
-//       status: "",
-//       referee: [],
-//       limitReferee: 0,
-//       totalScore: 0,
-//       limitScore: 0,
-//       activeStatus: 0,
-//       resultStatus: 0,
-//     },
-//     CSB03: {
-//       student: [
-//         {
-//           studentId: "",
-//         },
-//       ],
-//       start_in_date: "",
-//       end_in_date: "",
-//       referee: [
-//         {
-//           keyTeacher: "",
-//           status: 0,
-//         },
-//       ],
-//       activeStatus: 0,
-//       resultStatus: 0,
-//     },
-//     CSB04: {
-//       score: 0,
-//       status: "",
-//       referee: [],
-//       limitReferee: 0,
-//       totalScore: 0,
-//       limitScore: 0,
-//       activeStatus: 0,
-//       resultStatus: 0,
-//     },
-//   });
-
-//   await Project.findByIdAndUpdate(projects._id, { scoreId: scores._id });
-
-//   res.json({ body: { score: scores, project: projects } });
-// });
-
-
 
 app.post("/create-form", async (req, res) => {
   try {
@@ -375,19 +286,14 @@ app.post("/student-csb02", async (req, res) => {
 });
 
 app.post("/approveCSB02", async (req, res) => {
-  const { projectId } = req.body.params;
-  console.log(projectId)
-  if (!projectId) {
-    return res.status(400).send({ message: "Invalid project ID" });
-  }
-
+  const { projectId, activeStatus } = req.body.params;
   try {
-    const updatedProject = await csb02.findOneAndUpdate(
-      projectId,
+    const updatedProject = await Project.findOneAndUpdate(
+        projectId , 
       {
         "status.CSB02.activeStatus": activeStatus,
-        "status.CSB02.status": status || "waiting",
-        "status.CSB02.date": new Date() 
+        "status.CSB02.status": "approved",
+        "status.CSB02.date": new Date(),
       },
       { new: true }
     );
@@ -402,6 +308,7 @@ app.post("/approveCSB02", async (req, res) => {
     res.status(500).send({ message: "Server error, please try again." });
   }
 });
+
 
 app.post("/rejectCSB02", async (req, res) => {
   const { projectId } = req.body;
@@ -427,6 +334,43 @@ app.post("/rejectCSB02", async (req, res) => {
     res.status(500).send({ message: "Server error, please try again." });
   }
 });
+
+//score-csb02
+app.post("/score-csb02", async (req, res) => {
+  const { projectId, unconfirmScore, comment, referee } = req.body;
+  try {
+    // Check if the project already exists
+    let existingCsb02 = await csb02.findOne({ projectId });
+
+    if (existingCsb02) {
+      // Update the existing document
+      existingCsb02.unconfirmScore = unconfirmScore;
+      existingCsb02.referee = referee || [];
+      existingCsb02.comment = comment || "";
+      const updatedCsb02 = await existingCsb02.save();
+
+      res.json({ message: "CSB02 score updated successfully", project: updatedCsb02 });
+    } else {
+      // Create a new document if it doesn't exist
+      const newCsb02 = new csb02({
+        projectId,
+        unconfirmScore,
+        referee,
+        comment
+      });
+
+      const savedCsb02 = await newCsb02.save();
+      res.json({ message: "CSB02 score saved successfully", project: savedCsb02 });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating CSB02" });
+  }
+});
+
+
+
+
 
 
 //activecsb03
@@ -951,116 +895,116 @@ app.post("/auth/login", async (req, res) => {
 
 });
 
-app.post("/auth/info", async (req, res) => {
-  const { S_username } = req.body.replace("s", "");
-  if (!S_username) {
-    return res.status(400).json({ message: "Missing username" });
-  }
+// app.post("/auth/info", async (req, res) => {
+//   const { S_username } = req.body.replace("s", "");
+//   if (!S_username) {
+//     return res.status(400).json({ message: "Missing username" });
+//   }
 
-  try {
-    const formData = new FormData();
-    formData.append("username", S_username);
+//   try {
+//     const formData = new FormData();
+//     formData.append("username", S_username);
 
-    const config = {
-      method: "post",
-      url: "https://account.kmutnb.ac.th/api/account-api/user-info",
-      headers: {
-        Authorization: "Bearer nK6p0wT-8NVHUwB8p0e9QSYBSaIZGp9D",
-      },
-      data: formData,
-    };
-    // {
-    //   api_status: 'success',
-    //   api_status_code: 202,
-    //   api_message: 'Authentication success',
-    //   api_timestamp: '2024-10-14 00:55:14',
-    //   userInfo: {
-    //     username: 's6304062620061',
-    //     displayname: 'ณัชริกา กันทะสอน',
-    //     firstname_en: 'NATCHARIKA',
-    //     lastname_en: 'KUNTHASON',
-    //     pid: '1100703269736',
-    //     person_key: '',
-    //     email: 's6304062620061@kmutnb.ac.th',
-    //     account_type: 'students'
-    //   }
-    // }
+//     const config = {
+//       method: "post",
+//       url: "https://account.kmutnb.ac.th/api/account-api/user-info",
+//       headers: {
+//         Authorization: "Bearer nK6p0wT-8NVHUwB8p0e9QSYBSaIZGp9D",
+//       },
+//       data: formData,
+//     };
+//     // {
+//     //   api_status: 'success',
+//     //   api_status_code: 202,
+//     //   api_message: 'Authentication success',
+//     //   api_timestamp: '2024-10-14 00:55:14',
+//     //   userInfo: {
+//     //     username: 's6304062620061',
+//     //     displayname: 'ณัชริกา กันทะสอน',
+//     //     firstname_en: 'NATCHARIKA',
+//     //     lastname_en: 'KUNTHASON',
+//     //     pid: '1100703269736',
+//     //     person_key: '',
+//     //     email: 's6304062620061@kmutnb.ac.th',
+//     //     account_type: 'students'
+//     //   }
+//     // }
 
     
-    const response = await axios.request(config);
-    // search student by username in student if not exist create one
+//     const response = await axios.request(config);
+//     // search student by username in student if not exist create one
 
-    const username = response.userInfo.username.replace(/^s/, "")
-    const student = await Students.findOne({ S_id: username });
+//     const username = response.userInfo.username.replace(/^s/, "")
+//     const student = await Students.findOne({ S_id: username });
     
-    if (!student) {
-      const newStudent = new Students({
-        S_id: username,
-        S_name: response.userInfo.displayname,
-        S_email: response.userInfo.email,
-        S_pid: response.userInfo.pid,
-        S_account_type: response.userInfo.account_type,
-      });
-      await newStudent.save();
-    }
+//     if (!student) {
+//       const newStudent = new Students({
+//         S_id: username,
+//         S_name: response.userInfo.displayname,
+//         S_email: response.userInfo.email,
+//         S_pid: response.userInfo.pid,
+//         S_account_type: response.userInfo.account_type,
+//       });
+//       await newStudent.save();
+//     }
 
-    return res.json(response.data);
-  } catch (error) {
-    console.error("Error in getting user info:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-});
+//     return res.json(response.data);
+//   } catch (error) {
+//     console.error("Error in getting user info:", error);
+//     return res.status(500).json({ message: "Internal Server Error" });
+//   }
+// });
 
-app.delete("/students/:username", async (req, res) => {
-  const username = req.params.username;
-  if (!username) {
-    return res.status(400).json({ message: "Username is required" });
-  }
+// app.delete("/students/:username", async (req, res) => {
+//   const username = req.params.username;
+//   if (!username) {
+//     return res.status(400).json({ message: "Username is required" });
+//   }
 
-  try {
-    const result = await Student.findOneAndDelete({ S_id: username });
-    if (!result) {
-      return res.status(404).json({ message: "Student not found" });
-    }
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
+//   try {
+//     const result = await Student.findOneAndDelete({ S_id: username });
+//     if (!result) {
+//       return res.status(404).json({ message: "Student not found" });
+//     }
+//     res.json(result);
+//   } catch (error) {
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// });
 
-app.get("/students", async (req, res) => {
-  const { S_id } = req.query;
-  console.log("Received st_id:", S_id); // Log the received st_id
+// app.get("/students", async (req, res) => {
+//   const { S_id } = req.query;
+//   console.log("Received st_id:", S_id); // Log the received st_id
 
-  try {
-    const students = S_id
-      ? await Students.find({ S_id })
-      : await Students.find();
-    console.log("Fetched students:", students); // Log fetched students
-    res.json(students);
-  } catch (error) {
-    console.error("Error fetching students:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
+//   try {
+//     const students = S_id
+//       ? await Students.find({ S_id })
+//       : await Students.find();
+//     console.log("Fetched students:", students); // Log fetched students
+//     res.json(students);
+//   } catch (error) {
+//     console.error("Error fetching students:", error);
+//     res.status(500).send("Internal Server Error");
+//   }
+// });
 
-app.post("/students", async (req, res) => {
-  try {
-    // Modify properties of req.body if necessary
-    const newStudentData = { ...req.body };
+// app.post("/students", async (req, res) => {
+//   try {
+//     // Modify properties of req.body if necessary
+//     const newStudentData = { ...req.body };
 
-    if (typeof newStudentData.S_id === "string") {
-      newStudentData.S_id = newStudentData.S_id.replace("s", ""); // Example of replacing "s" in st_id
-    }
+//     if (typeof newStudentData.S_id === "string") {
+//       newStudentData.S_id = newStudentData.S_id.replace("s", ""); // Example of replacing "s" in st_id
+//     }
 
-    const student = new Students(newStudentData);
-    const result = await student.save();
-    res.json(result);
-  } catch (error) {
-    console.error("Error creating student:", error);
-    res.status(500).json({ message: error.message });
-  }
-});
+//     const student = new Students(newStudentData);
+//     const result = await student.save();
+//     res.json(result);
+//   } catch (error) {
+//     console.error("Error creating student:", error);
+//     res.status(500).json({ message: error.message });
+//   }
+// });
 
 app.post('/admins', (req, res) => {
   res.status(201).send('Admin created successfully');
