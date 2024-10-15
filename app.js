@@ -376,7 +376,7 @@ app.post("/score-csb02", async (req, res) => {
 //activecsb03
 
 app.post("/student-csb03", async (req, res) => {
-  const { projectId, activeStatus, status } = req.body; 
+  const { projectId, activeStatus,status } = req.body.params; 
 
   try {
 
@@ -397,24 +397,19 @@ app.post("/student-csb03", async (req, res) => {
     res.json({ message: "CSB03 updated successfully", project: updatedProject });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error updating CSB02" });
+    res.status(500).json({ message: "Error updating CSB03" });
   }
 });
 
 app.post("/approveCSB03", async (req, res) => {
-  const { projectId } = req.body;
-  console.log(projectId)
-  if (!projectId) {
-    return res.status(400).send({ message: "Invalid project ID" });
-  }
-
+  const { projectId, activeStatus } = req.body.params;
   try {
-    const updatedProject = await csb02.findOneAndUpdate(
-      projectId,
+    const updatedProject = await Project.findOneAndUpdate(
+        projectId , 
       {
         "status.CSB03.activeStatus": activeStatus,
-        "status.CSB03.status": status || "passed",
-        "status.CSB03.date": new Date() 
+        "status.CSB03.status": "approved",
+        "status.CSB03.date": new Date(),
       },
       { new: true }
     );
@@ -456,7 +451,115 @@ app.post("/rejectCSB03", async (req, res) => {
 });
 
 
+//activecsb04
+app.post("/student-csb04", async (req, res) => {
+  const { projectId, activeStatus, status } = req.body.params;
+  try {
+    console.log(new Date().toLocaleString("en-TH", {timeZone: "Asia/Bangkok"}));
+    
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId , 
+      {
+        "status.CSB04.activeStatus": activeStatus,
+        "status.CSB04.status": status || "waiting",
+        "status.CSB04.date": new Date(),
+      },
+      { new: true }
+    );
 
+    if (!updatedProject) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.json({ message: "CSB04 updated successfully", project: updatedProject });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating CSB04" });
+  }
+});
+
+app.post("/approveCSB04", async (req, res) => {
+  const { projectId, activeStatus } = req.body.params;
+  try {
+    const updatedProject = await Project.findOneAndUpdate(
+        projectId , 
+      {
+        "status.CSB04.activeStatus": activeStatus,
+        "status.CSB04.status": "approved",
+        "status.CSB04.date": new Date(),
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
+    }
+
+    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Server error, please try again." });
+  }
+});
+
+
+app.post("/rejectCSB04", async (req, res) => {
+  const { projectId } = req.body;
+
+  if (!projectId) {
+    return res.status(400).send({ message: "Invalid project ID" });
+  }
+
+  try {
+    const updatedProject = await csb04.findByIdAndUpdate(
+      projectId,
+      { $set: { "csb04Status.activeStatus": 0, "csb04Status.status": "failed" } }, // Reject the project
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).send({ message: "Project not found" });
+    }
+
+    res.status(200).send({ message: "Project rejected successfully!", data: updatedProject });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Server error, please try again." });
+  }
+});
+
+//score-csb04
+app.post("/score-csb04", async (req, res) => {
+  const { projectId, unconfirmScore, comment, referee } = req.body;
+  try {
+    // Check if the project already exists
+    let existingCsb04 = await csb04.findOne({ projectId });
+
+    if (existingCsb04) {
+      // Update the existing document
+      existingCsb04.unconfirmScore = unconfirmScore;
+      existingCsb04.referee = referee || [];
+      existingCsb04.comment = comment || "";
+      const updatedCsb04 = await existingCsb04.save();
+
+      res.json({ message: "CSB04 score updated successfully", project: updatedCsb04 });
+    } else {
+      // Create a new document if it doesn't exist
+      const newCsb04 = new csb04({
+        projectId,
+        unconfirmScore,
+        referee,
+        comment
+      });
+
+      const savedCsb04 = await newCsb04.save();
+      res.json({ message: "CSB04 score saved successfully", project: savedCsb04 });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error updating CSB04" });
+  }
+});
 
 
 
