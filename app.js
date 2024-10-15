@@ -28,7 +28,7 @@ const csb02 = require("./model/csb02.model");
 const csb03 = require("./model/csb03.model");
 const csb04 = require("./model/csb04.model");
 
-const adminUser = ["ad", "admin2", "admin3"];
+const adminUser = ["nateep", "admin2", "admin3"];
 
 const app = express();
 app.use(cors());
@@ -83,8 +83,6 @@ app.post("/create-form", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
-
 
 // Updated route to reflect changes
 app.post("/create-room-management", async (req, res) => {
@@ -280,20 +278,16 @@ app.post("/approveCSB02", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res
-      .status(200)
-      .send({
-        message: "Project approved successfully!",
-        data: updatedProject,
-      });
+    res.status(200).send({
+      message: "Project approved successfully!",
+      data: updatedProject,
+    });
   } catch (error) {
     console.error("Error approving project:", error); // More specific error logging
-    res
-      .status(500)
-      .send({
-        message: "Server error, please try again.",
-        error: error.message,
-      });
+    res.status(500).send({
+      message: "Server error, please try again.",
+      error: error.message,
+    });
   }
 });
 
@@ -321,12 +315,10 @@ app.post("/rejectCSB02", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res
-      .status(200)
-      .send({
-        message: "Project rejected successfully!",
-        data: updatedProject,
-      });
+    res.status(200).send({
+      message: "Project rejected successfully!",
+      data: updatedProject,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
@@ -512,12 +504,10 @@ app.post("/approveCSB03", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res
-      .status(200)
-      .send({
-        message: "Project approved successfully!",
-        data: updatedProject,
-      });
+    res.status(200).send({
+      message: "Project approved successfully!",
+      data: updatedProject,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
@@ -548,12 +538,10 @@ app.post("/rejectCSB03", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res
-      .status(200)
-      .send({
-        message: "Project rejected successfully!",
-        data: updatedProject,
-      });
+    res.status(200).send({
+      message: "Project rejected successfully!",
+      data: updatedProject,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
@@ -609,12 +597,10 @@ app.post("/approveCSB04", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res
-      .status(200)
-      .send({
-        message: "Project approved successfully!",
-        data: updatedProject,
-      });
+    res.status(200).send({
+      message: "Project approved successfully!",
+      data: updatedProject,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
@@ -645,12 +631,10 @@ app.post("/rejectCSB04", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res
-      .status(200)
-      .send({
-        message: "Project rejected successfully!",
-        data: updatedProject,
-      });
+    res.status(200).send({
+      message: "Project rejected successfully!",
+      data: updatedProject,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
@@ -767,7 +751,6 @@ app.get("/project-students", async (req, res) => {
   let project = await Project.find();
   res.json({ body: project });
 });
-
 
 // สร้างการประกาศ
 app.post("/create-anouncement", async (req, res) => {
@@ -935,6 +918,7 @@ app.post("/auth/login", async (req, res) => {
           { username: response.data.userInfo.username, role: "student" },
           process.env.JWT_SECRET
         );
+        console.log("Role:", "student");
         return res.json({
           username: response.data.userInfo.username,
           role: "student",
@@ -963,6 +947,8 @@ app.post("/auth/login", async (req, res) => {
             { username, role: "admin" },
             process.env.JWT_SECRET
           );
+          console.log("Role:", "admin");
+
           return res.json({ username, role: "admin", jwtToken });
         }
 
@@ -982,8 +968,11 @@ app.post("/auth/login", async (req, res) => {
           { username, role: "teacher" },
           process.env.JWT_SECRET
         );
+        console.log("Role:", "teacher");
+
         return res.json({ username, role: "teacher", jwtToken });
       }
+      console.log("Role:", "unknown");
 
       return res.status(403).json({ message: "Forbidden" });
     }
@@ -993,49 +982,47 @@ app.post("/auth/login", async (req, res) => {
   }
 });
 
-// app.post('/assignteacher', async(req, res) => {
-//   const project = await Project.findOne({ projectId: req.body.projectId });
-//   // req.body.T_id = [T_id] find every teacher in the array
-//   const teacher = await Teacher.find({ T_id: { $in: req.body.T_id } });
-//   console.log("Project:", project);
-//   console.log("Teacher:", teacher);
-
-//   if (!project) {
-//     return res.status(404).json({ message: "Project not found" });
-//   }
-
-//   if (!teacher) {
-//     return res.status(404).json({ message: "Teacher not found" });
-//   }
-
-//   // update project with teacher only T_id and T_name
-//   try{
-//     await Project.findByIdAndUpdate(project._id, { lecturer: teacher });
-//     res.json({ body: project });
-//   } catch (error) {
-//     console.error("Error assigning teacher:", error);
-//     res.status(500).json({ message: "Internal Server Error" });
-//   }
-// })
-
-app.post("/assignteacher", async (req, res) => {
+app.post('/assignteacher', async(req, res) => {
   const project = await Project.findOne({ projectId: req.body.projectId });
   const teacher = await Teacher.find({ T_id: { $in: req.body.T_id } });
+  console.log("Project:", project);
+  console.log("Teacher:", teacher);
 
   if (!project) {
     return res.status(404).json({ message: "Project not found" });
   }
 
-  if (!teacher || teacher.length === 0) {
+  if (!teacher) {
     return res.status(404).json({ message: "Teacher not found" });
   }
-  try {
+
+  try{
     await Project.findByIdAndUpdate(project._id, { lecturer: teacher });
+    res.json({ body: project });
   } catch (error) {
     console.error("Error assigning teacher:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-});
+})
+
+// app.post("/assignteacher", async (req, res) => {
+//   const project = await Project.findOne({ projectId: req.body.projectId });
+//   const teacher = await Teacher.find({ T_id: { $in: req.body.T_id } });
+
+//   if (!project) {
+//     return res.status(404).json({ message: "Project not found" });
+//   }
+
+//   if (!teacher || teacher.length === 0) {
+//     return res.status(404).json({ message: "Teacher not found" });
+//   }
+//   try {
+//     await Project.findByIdAndUpdate(project._id, { lecturer: teacher });
+//   } catch (error) {
+//     console.error("Error assigning teacher:", error);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// });
 
 //ocr
 const upload = multer();
