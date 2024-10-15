@@ -8,7 +8,7 @@ const bodyParser = require("body-parser");
 const fs = require("fs");
 const { exec } = require("child_process");
 const { promisify } = require("util");
-const path = require('path');
+const path = require("path");
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -23,10 +23,10 @@ const axios = require("axios");
 const Admin = require("./model/admin.model");
 const Teacher = require("./model/teacher.model");
 const file = require("./model/file.model");
-const csb01 = require("./model/csb01.model")
-const csb02 = require("./model/csb02.model")
-const csb03 = require("./model/csb03.model")
-const csb04 = require("./model/csb04.model")
+const csb01 = require("./model/csb01.model");
+const csb02 = require("./model/csb02.model");
+const csb03 = require("./model/csb03.model");
+const csb04 = require("./model/csb04.model");
 
 const adminUser = ["ad", "admin2", "admin3"];
 
@@ -43,9 +43,6 @@ app.get("/", async (req, res) => {
   res.json({ body: "hello TNP" });
 });
 
-
-
-
 app.post("/create-form", async (req, res) => {
   try {
     const {
@@ -53,7 +50,7 @@ app.post("/create-form", async (req, res) => {
       projectType,
       projectStatus,
       projectDescription,
-      student
+      student,
     } = req.body.data; // Accessing properties inside 'data'
 
     // Validate required fields
@@ -72,7 +69,7 @@ app.post("/create-form", async (req, res) => {
       projectType,
       projectStatus,
       projectDescription,
-      student
+      student,
     });
 
     const savedData = await projects.save();
@@ -89,71 +86,14 @@ app.post("/create-form", async (req, res) => {
 
 
 
-
-
-
-// สร้างห้องสอบ
-// app.post("/create-room-management", async (req, res) => {
-//   try {
-//     const { roomExam, nameExam, dateExam, referees, projects } = req.body;
-//     const room = await Room.create({
-//       roomExam,
-//       nameExam,
-//       dateExam,
-//       referees,
-//       projects,
-//     });
-
-//     for (const project of projects) {
-//       const { projectId } = project;
-//       const scoreUpdate = {
-//         roomExam,
-//         dateExam,
-//         referee: referees.map(
-//           ({ keyLecturer, nameLecturer, roleLecturer }) => ({
-//             keyLecturer,
-//             nameLecturer,
-//             roleLecturer,
-//             score: 0,
-//           })
-//         ),
-//         limitReferee: referees.length,
-//         totalScore: 0,
-//         limitScore: 100,
-//         resultStatus: 0,
-//       };
-//       const examField = `CSB${nameExam.split("CSB")[1]}`;
-//       await Score.findOneAndUpdate(
-//         { projectId },
-//         {
-//           $set: {
-//             [`${examField}.roomExam`]: scoreUpdate.roomExam,
-//             [`${examField}.dateExam`]: scoreUpdate.dateExam,
-//             [`${examField}.referee`]: scoreUpdate.referee,
-//             [`${examField}.limitReferee`]: scoreUpdate.limitReferee,
-//             [`${examField}.totalScore`]: scoreUpdate.totalScore,
-//             [`${examField}.limitScore`]: scoreUpdate.limitScore,
-//             [`${examField}.activeStatus`]: scoreUpdate.activeStatus,
-//             [`${examField}.resultStatus`]: scoreUpdate.resultStatus,
-//           },
-//         },
-//         { new: true, upsert: true }
-//       );
-//     }
-//     res.json({ message: "Room management and score updated successfully!" });
-//   } catch (error) {
-//     console.error("Error in creating room management:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
-
 // Updated route to reflect changes
 app.post("/create-room-management", async (req, res) => {
   try {
     const { roomExam, nameExam, dateExam, teachers, projects } = req.body; // Updated referees to teachers
     if (!teachers || !Array.isArray(teachers)) {
-      return res.status(400).json({ error: "Teachers must be a defined array" });
+      return res
+        .status(400)
+        .json({ error: "Teachers must be a defined array" });
     }
 
     const room = await Room.create({
@@ -169,7 +109,8 @@ app.post("/create-room-management", async (req, res) => {
       const scoreUpdate = {
         roomExam,
         dateExam,
-        referee: teachers.map( // Updated referees to teachers
+        referee: teachers.map(
+          // Updated referees to teachers
           ({ T_id, T_name, role }) => ({
             T_id,
             T_name,
@@ -207,8 +148,6 @@ app.post("/create-room-management", async (req, res) => {
   }
 });
 
-
-
 //แต่งตั้งหัวหน้าภาค
 app.post("/appointHeadOfDepartment", async (req, res) => {
   try {
@@ -225,7 +164,7 @@ app.post("/appointHeadOfDepartment", async (req, res) => {
     if (existingHead) {
       // If there is an existing Head, update their role to something else
       await Teacher.findByIdAndUpdate(existingHead._id, {
-        $set: { T_super_role: "Teacher" } // or another appropriate role
+        $set: { T_super_role: "Teacher" }, // or another appropriate role
       });
     }
 
@@ -245,15 +184,15 @@ app.post("/appointHeadOfDepartment", async (req, res) => {
       return res.status(404).json({ error: "Teacher not found" });
     }
 
-    res.json({ message: "Head of Department appointed successfully", teacher: updatedTeacher });
+    res.json({
+      message: "Head of Department appointed successfully",
+      teacher: updatedTeacher,
+    });
   } catch (error) {
     console.error("Error in appointing Head of Department:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-
-
 
 app.get("/projects", async (req, res) => {
   let Projects = await Project.find();
@@ -264,7 +203,9 @@ app.get("/projects", async (req, res) => {
 app.post("/student-csb02", async (req, res) => {
   const { projectId, activeStatus, status } = req.body.params;
   try {
-    console.log(new Date().toLocaleString("en-TH", { timeZone: "Asia/Bangkok" }));
+    console.log(
+      new Date().toLocaleString("en-TH", { timeZone: "Asia/Bangkok" })
+    );
 
     const updatedProject = await Project.findByIdAndUpdate(
       projectId,
@@ -280,7 +221,10 @@ app.post("/student-csb02", async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    res.json({ message: "CSB02 updated successfully", project: updatedProject });
+    res.json({
+      message: "CSB02 updated successfully",
+      project: updatedProject,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error updating CSB02" });
@@ -291,7 +235,7 @@ app.post("/student-csb02", async (req, res) => {
 //   const { projectId, activeStatus } = req.body.params;
 //   try {
 //     const updatedProject = await Project.findOneAndUpdate(
-//         projectId , 
+//         projectId ,
 //       {
 //         "status.CSB02.activeStatus": activeStatus,
 //         "status.CSB02.status": "approved",
@@ -311,13 +255,14 @@ app.post("/student-csb02", async (req, res) => {
 //   }
 // });
 
-
 app.post("/approveCSB02", async (req, res) => {
   const { projectId, activeStatus } = req.body.params; // Change this to req.body directly
 
   // Check if projectId and activeStatus are provided
   if (!projectId || activeStatus === undefined) {
-    return res.status(400).send({ message: "projectId and activeStatus are required." });
+    return res
+      .status(400)
+      .send({ message: "projectId and activeStatus are required." });
   }
 
   try {
@@ -335,10 +280,20 @@ app.post("/approveCSB02", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+    res
+      .status(200)
+      .send({
+        message: "Project approved successfully!",
+        data: updatedProject,
+      });
   } catch (error) {
     console.error("Error approving project:", error); // More specific error logging
-    res.status(500).send({ message: "Server error, please try again.", error: error.message });
+    res
+      .status(500)
+      .send({
+        message: "Server error, please try again.",
+        error: error.message,
+      });
   }
 });
 
@@ -346,8 +301,9 @@ app.post("/rejectCSB02", async (req, res) => {
   const { projectId, activeStatus } = req.body.params;
 
   if (!projectId || activeStatus === undefined) {
-    return res.status(400).send({ message: "projectId and activeStatus are required." });
-
+    return res
+      .status(400)
+      .send({ message: "projectId and activeStatus are required." });
   }
 
   try {
@@ -365,14 +321,19 @@ app.post("/rejectCSB02", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res.status(200).send({ message: "Project rejected successfully!", data: updatedProject });
+    res
+      .status(200)
+      .send({
+        message: "Project rejected successfully!",
+        data: updatedProject,
+      });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
   }
 });
 
-app.post('/score-csb02', async (req, res) => {
+app.post("/score-csb02", async (req, res) => {
   const { projectId, unconfirmScore, comment, referee } = req.body.params;
 
   try {
@@ -383,12 +344,12 @@ app.post('/score-csb02', async (req, res) => {
       // Update the existing document
       existingCsb02.unconfirmScore = unconfirmScore;
       existingCsb02.referee = referee || [];
-      existingCsb02.comment = comment || '';
+      existingCsb02.comment = comment || "";
       const updatedCsb02 = await existingCsb02.save();
 
       // Send the updated document back with all fields included
       res.json({
-        message: 'CSB02 score updated successfully',
+        message: "CSB02 score updated successfully",
         project: {
           _id: updatedCsb02._id,
           projectId: updatedCsb02.projectId,
@@ -410,7 +371,7 @@ app.post('/score-csb02', async (req, res) => {
 
       // Send the newly created document back with all fields included
       res.json({
-        message: 'CSB02 score saved successfully',
+        message: "CSB02 score saved successfully",
         project: {
           _id: savedCsb02._id,
           projectId: savedCsb02.projectId,
@@ -422,7 +383,9 @@ app.post('/score-csb02', async (req, res) => {
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error updating CSB02', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating CSB02", error: error.message });
   }
 });
 
@@ -444,16 +407,24 @@ app.post("/chair-csb02", async (req, res) => {
       existingCsb02.confirmScore = confirmScore;
       existingCsb02.logBookScore = logBookScore;
       await existingCsb02.save();
-      return res.json({ message: "CSB02 updated successfully!", data: existingCsb02 });
+      return res.json({
+        message: "CSB02 updated successfully!",
+        data: existingCsb02,
+      });
     } else {
       // Create a new entry
       const newCsb02 = new csb02({ projectId, confirmScore, logBookScore });
       await newCsb02.save();
-      return res.json({ message: "CSB02 created successfully!", data: newCsb02 });
+      return res.json({
+        message: "CSB02 created successfully!",
+        data: newCsb02,
+      });
     }
   } catch (error) {
     console.error("Error saving CSB02:", error);
-    return res.status(500).json({ message: "Server error, please try again later." });
+    return res
+      .status(500)
+      .json({ message: "Server error, please try again later." });
   }
 });
 
@@ -462,11 +433,12 @@ app.post("/depart-csb02", async (req, res) => {
 
   // Validate input
   if (!projectId || activeStatus === undefined) {
-    return res.status(400).send({ message: "projectId and activeStatus are required." });
+    return res
+      .status(400)
+      .send({ message: "projectId and activeStatus are required." });
   }
 
   try {
-
     const updatedProject = await Project.findOneAndUpdate(
       { _id: projectId },
       {
@@ -483,31 +455,28 @@ app.post("/depart-csb02", async (req, res) => {
     }
 
     // Send a success response
-    res.status(200).json({ message: 'Score updated successfully', updatedProject });
+    res
+      .status(200)
+      .json({ message: "Score updated successfully", updatedProject });
   } catch (error) {
-    console.error('Error updating score:', error);
-    res.status(500).json({ message: 'Error updating score', error: error.message });
+    console.error("Error updating score:", error);
+    res
+      .status(500)
+      .json({ message: "Error updating score", error: error.message });
   }
 });
-
-
-
-
-
-
 
 //activecsb03
 app.post("/student-csb03", async (req, res) => {
   const { projectId, activeStatus, status } = req.body.params;
 
   try {
-
     const updatedProject = await Project.findByIdAndUpdate(
       projectId,
       {
         "status.CSB03.activeStatus": activeStatus,
         "status.CSB03.status": status || "waiting",
-        "status.CSB03.date": new Date()
+        "status.CSB03.date": new Date(),
       },
       { new: true }
     );
@@ -516,7 +485,10 @@ app.post("/student-csb03", async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    res.json({ message: "CSB04 updated successfully", project: updatedProject });
+    res.json({
+      message: "CSB04 updated successfully",
+      project: updatedProject,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error updating CSB04" });
@@ -540,7 +512,12 @@ app.post("/approveCSB03", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+    res
+      .status(200)
+      .send({
+        message: "Project approved successfully!",
+        data: updatedProject,
+      });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
@@ -551,8 +528,9 @@ app.post("/rejectCSB03", async (req, res) => {
   const { projectId, activeStatus } = req.body.params;
 
   if (!projectId || activeStatus === undefined) {
-    return res.status(400).send({ message: "projectId and activeStatus are required." });
-
+    return res
+      .status(400)
+      .send({ message: "projectId and activeStatus are required." });
   }
 
   try {
@@ -570,20 +548,25 @@ app.post("/rejectCSB03", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res.status(200).send({ message: "Project rejected successfully!", data: updatedProject });
+    res
+      .status(200)
+      .send({
+        message: "Project rejected successfully!",
+        data: updatedProject,
+      });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
   }
 });
 
-
-
 //activecsb04
 app.post("/student-csb04", async (req, res) => {
   const { projectId, activeStatus, status } = req.body.params;
   try {
-    console.log(new Date().toLocaleString("en-TH", { timeZone: "Asia/Bangkok" }));
+    console.log(
+      new Date().toLocaleString("en-TH", { timeZone: "Asia/Bangkok" })
+    );
 
     const updatedProject = await Project.findByIdAndUpdate(
       projectId,
@@ -599,7 +582,10 @@ app.post("/student-csb04", async (req, res) => {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    res.json({ message: "CSB03 updated successfully", project: updatedProject });
+    res.json({
+      message: "CSB03 updated successfully",
+      project: updatedProject,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error updating CSB04" });
@@ -623,7 +609,12 @@ app.post("/approveCSB04", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+    res
+      .status(200)
+      .send({
+        message: "Project approved successfully!",
+        data: updatedProject,
+      });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
@@ -634,8 +625,9 @@ app.post("/rejectCSB04", async (req, res) => {
   const { projectId, activeStatus } = req.body.params;
 
   if (!projectId || activeStatus === undefined) {
-    return res.status(400).send({ message: "projectId and activeStatus are required." });
-
+    return res
+      .status(400)
+      .send({ message: "projectId and activeStatus are required." });
   }
 
   try {
@@ -653,15 +645,19 @@ app.post("/rejectCSB04", async (req, res) => {
       return res.status(404).send({ message: "Project not found" });
     }
 
-    res.status(200).send({ message: "Project rejected successfully!", data: updatedProject });
+    res
+      .status(200)
+      .send({
+        message: "Project rejected successfully!",
+        data: updatedProject,
+      });
   } catch (error) {
     console.error(error);
     res.status(500).send({ message: "Server error, please try again." });
   }
 });
 
-
-app.post('/score-csb04', async (req, res) => {
+app.post("/score-csb04", async (req, res) => {
   const { projectId, unconfirmScore, comment, referee } = req.body.params;
 
   try {
@@ -670,12 +666,11 @@ app.post('/score-csb04', async (req, res) => {
     if (existingCsb04) {
       existingCsb04.unconfirmScore = unconfirmScore;
       existingCsb04.referee = referee || [];
-      existingCsb04.comment = comment || '';
+      existingCsb04.comment = comment || "";
       const updatedCsb04 = await existingCsb04.save();
 
-
       res.json({
-        message: 'CSB03 score updated successfully',
+        message: "CSB03 score updated successfully",
         project: {
           _id: updatedCsb04._id,
           projectId: updatedCsb04.projectId,
@@ -695,7 +690,7 @@ app.post('/score-csb04', async (req, res) => {
       const savedCsb04 = await newCsb04.save();
 
       res.json({
-        message: 'CSB04 score saved successfully',
+        message: "CSB04 score saved successfully",
         project: {
           _id: savedCsb04._id,
           projectId: savedCsb04.projectId,
@@ -707,7 +702,9 @@ app.post('/score-csb04', async (req, res) => {
     }
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error updating CSB04', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating CSB04", error: error.message });
   }
 });
 
@@ -728,16 +725,24 @@ app.post("/chair-csb04", async (req, res) => {
       existingCsb04.confirmScore = confirmScore;
       existingCsb04.logBookScore = logBookScore;
       await existingCsb04.save();
-      return res.json({ message: "CSB03 updated successfully!", data: existingCsb04 });
+      return res.json({
+        message: "CSB03 updated successfully!",
+        data: existingCsb04,
+      });
     } else {
       // Create a new entry
       const newCsb04 = new csb02({ projectId, confirmScore, logBookScore });
       await newCsb04.save();
-      return res.json({ message: "CSB03 created successfully!", data: newCsb04 });
+      return res.json({
+        message: "CSB03 created successfully!",
+        data: newCsb04,
+      });
     }
   } catch (error) {
     console.error("Error saving CSB03:", error);
-    return res.status(500).json({ message: "Server error, please try again later." });
+    return res
+      .status(500)
+      .json({ message: "Server error, please try again later." });
   }
 });
 
@@ -745,59 +750,23 @@ app.post("/depart-csb04", async (req, res) => {
   const { projectId, confirmScore } = req.body.params;
 
   try {
-
     let existingCsb02 = await csb02.findOne({ projectId });
 
     if (existingCsb02) {
-
     } else {
-
     }
-  } catch (error) {
-
-  }
+  } catch (error) {}
 });
-
-
-
 
 app.get("/teachers", async (req, res) => {
   let teacher = await Teacher.find();
   res.json({ body: teacher });
 });
 
-
-
-
-
 app.get("/project-students", async (req, res) => {
   let project = await Project.find();
   res.json({ body: project });
 });
-
-
-
-// สร้าง sp1-sp2
-// app.post('/students', async (req, res) => {
-//   try {
-//     const { projectValidate } = req.body.data;
-//     const students = await User.find({ account_type: 'students' });
-//     console.log(req.body.data);
-//     let studentIds = students.map(({ username, projectStatus }) => {
-//       if(projectStatus[0] == projectValidate[0] && projectStatus[1] == projectValidate[1]){
-//         return username.substring(1); 
-//       } 
-//     });
-//     let projects = await Project.find({
-//       'student.studentId': { $in: studentIds }
-//     });
-//     res.json({ body: projects });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: 'Internal Server Error' });
-//   }
-// });
-
 
 
 // สร้างการประกาศ
@@ -811,7 +780,6 @@ app.post("/create-anouncement", async (req, res) => {
   res.json({ body: anouncement });
 });
 
-
 app.get("/sumary-room", async (req, res) => {
   let room = await Room.find();
   res.json({ body: room });
@@ -821,9 +789,6 @@ app.get("/room-management", async (req, res) => {
   let room = await Room.find();
   res.json({ body: room });
 });
-
-
-
 
 // app.post("/create-user", async (req, res) => {
 //   const { username, displayname, firstname, lastname, account_type } = req.body;
@@ -844,222 +809,6 @@ app.get("/room-management", async (req, res) => {
 //   res.json({ body: score });
 // });
 
-
-
-
-
-
-
-
-// app.get("/students", async (req, res) => {
-//   const { S_id } = req.query;
-//   console.log("Received S_id:", S_id);
-
-//   try {
-//     const students = S_id
-//       ? await Student.find({ S_id })
-//       : await Student.find();
-//     console.log("Fetched students:", students); // Log fetched students
-//     res.json(students);
-//   } catch (error) {
-//     console.error("Error fetching students:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// });
-
-
-// // app.get("/students/:id", async (req, res) => {
-// //     try {
-// //         const students = await Student.find();
-// //         res.json(students);
-// //     } catch (err) {
-// //         console.error("Error fetching students:", err);
-// //         res.status(500).send("Internal Server Error");
-// //     }
-// // });
-
-// app.get("/students/:S_id", async (req, res) => {
-//   const { S_id } = req.params; 
-//   console.log("Received S_id:", S_id); 
-
-//   try {
-//     const students = await Student.findOne({ S_id }); 
-//     console.log("Fetched student:", students); 
-//     if (!students) {
-//       return res.status(404).send("Student not found"); 
-//     }
-//     res.json(students); // Return the student data
-//   } catch (error) {
-//     console.error("Error fetching student:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// });
-
-
-// // PUT: Update a student by ID
-// app.put("/students/:id", async (req, res) => {
-//   try {
-//       const studentId = req.params.id;
-//       const updateData = req.body;
-//       const updatedStudent = await Student.findByIdAndUpdate(studentId, updateData, { new: true }); // { new: true } returns the updated document
-//       if (!updatedStudent) {
-//           return res.status(404).send("Student not found");
-//       }
-//       res.json(updatedStudent);
-//   } catch (err) {
-//       console.error("Error updating student:", err);
-//       res.status(500).send("Internal Server Error");
-//   }
-// });
-
-// // DELETE: Remove a student by ID
-// app.delete("/students/:id", async (req, res) => {
-//   try {
-//       const studentId = req.params.id;
-//       const deletedStudent = await Student.findByIdAndDelete(studentId);
-//       if (!deletedStudent) {
-//           return res.status(404).send("Student not found");
-//       }
-//       res.json({ message: "Student deleted successfully" });
-//   } catch (err) {
-//       console.error("Error deleting student:", err);
-//       res.status(500).send("Internal Server Error");
-//   }
-// });
-
-// app.post("/auth/login", async (req, res) => {
-//   let { username, password } = req.body;
-
-//   if (!username || !password) {
-//       return res.status(400).json({ message: "Missing credentials" });
-//   }
-
-//   try {
-//       const formData = new FormData();
-//       formData.append("username", username);
-//       formData.append("password", password);
-//       formData.append("scopes", "student,personel");
-
-//       const headersConfig = {
-//           headers: {
-//               "Access-Control-Allow-Origin": "*",
-//               "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept",
-//               Authorization: "Bearer nK6p0wT-8NVHUwB8p0e9QSYBSaIZGp9D",
-//           },
-//       };
-
-//       const response = await axios.post(
-//           "https://api.account.kmutnb.ac.th/api/account-api/user-authen",
-//           formData,
-//           headersConfig
-//       );
-//       console.log(response.data)
-//       return res.json(response.data);
-//   } catch (error) {
-//       console.error("Error in login:", error);
-//       return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// });
-
-
-// app.post("/auth/info", async (req, res) => {
-//   const { S_id } = req.body.replace("s", "");
-//   if (!S_id) {
-//       return res.status(400).json({ message: "Missing username" });
-//   }
-
-//   try {
-//       const formData = new FormData();
-//       formData.append("username", S_id);
-
-//       const config = {
-//           method: "post",
-//           url: "https://account.kmutnb.ac.th/api/account-api/user-info",
-//           headers: {
-//               Authorization: "Bearer nK6p0wT-8NVHUwB8p0e9QSYBSaIZGp9D",
-//           },
-//           data: formData,
-//       };
-
-//       const response = await axios.request(config);
-//       return res.json(response.data);
-//   } catch (error) {
-//       console.error("Error in getting user info:", error);
-//       return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// });
-
-// app.post("/students", async (req, res) => {
-//   try {
-//       const newStudentData = { ...req.body };
-
-//       if (typeof newStudentData.S_id === "string") {
-//           newStudentData.S_id = newStudentData.S_id.replace("s", "");
-//       }
-
-//       const student = new Student(newStudentData);
-//       const result = await student.save();
-//       res.json(result);
-//   } catch (error) {
-//       console.error("Error creating student:", error);
-//       res.status(500).json({ message: error.message });
-//   }
-// });
-
-// // PUT: อัปเดตสถานะ S_status ของนักเรียน
-// app.put("/students/:id/status", async (req, res) => {
-//   try {
-//       const studentId = req.params.id;
-//       const { S_status } = req.body;
-
-//       // อัปเดตสถานะ S_status ในฐานข้อมูล
-//       const updatedStudent = await Student.findOneAndUpdate(
-//           { S_id: studentId },
-//           { S_status },
-//           { new: true }
-//       );
-
-//       if (!updatedStudent) {
-//           return res.status(404).json({ message: "Student not found" });
-//       }
-
-//       res.json(updatedStudent);
-//   } catch (error) {
-//       console.error("Error updating student status:", error);
-//       res.status(500).json({ message: error.message });
-//   }
-// });
-
-
-// // PUT: อัปเดตข้อมูลนักเรียน (รวมถึง S_status)
-// app.put("/students/:id", async (req, res) => {
-//   try {
-//       const studentId = req.params.id.replace("s", ""); // ตัด 's' ออกจาก studentId
-//       const newStudentData = { ...req.body };
-
-//       // อัปเดต S_status ถ้าถูกส่งมาใน request body
-//       if (newStudentData.S_status !== undefined) {
-//           newStudentData.S_status = newStudentData.S_status;
-//       }
-
-//       // อัปเดตข้อมูลนักเรียนในฐานข้อมูล
-//       const updatedStudent = await Student.findOneAndUpdate(
-//           { S_id: studentId },
-//           newStudentData,
-//           { new: true }
-//       );
-
-//       if (!updatedStudent) {
-//           return res.status(404).json({ message: "Student not found" });
-//       }
-
-//       res.json(updatedStudent); // ส่งคืนข้อมูลนักเรียนที่ถูกอัปเดต
-//   } catch (error) {
-//       console.error("Error updating student:", error);
-//       res.status(500).json({ message: error.message });
-//   }
-// });
-
 app.post("/auth/level", async (req, res) => {
   const { username } = req.body;
 
@@ -1076,27 +825,25 @@ app.post("/auth/level", async (req, res) => {
     const super_role = teacher.T_super_role;
 
     // find in Room.teacher that have role = main
-    const isChairMan = await Room.findOne({
-      teacher: { $elemMatch: { T_id: username, role: "main" } },
-    })
-    
+    const chairMan = await Room.findOne({
+      teachers: { $elemMatch: { T_id: username, role: "main" } },
+    });
+
     let level = "teacher";
 
     if (super_role === "head") {
       level = "head";
     }
 
-    if (isChairMan) {
+    if (chairMan) {
       level = "chairman";
     }
 
-    if (super_role === "admin" && isChairMan) {
+    if (super_role === "head" && chairMan) {
       level = "all";
     }
 
     return res.json({ level });
-
-
   } catch (error) {
     console.error("Error in getting user info:", error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -1120,14 +867,21 @@ app.get("/auth/login", async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const newToken = jwt.sign({ username: decoded.username, role: decoded.role }, process.env.JWT_SECRET);
+    const newToken = jwt.sign(
+      { username: decoded.username, role: decoded.role },
+      process.env.JWT_SECRET
+    );
 
-    res.json({ username: decoded.username, role: decoded.role, jwtToken: newToken });
+    res.json({
+      username: decoded.username,
+      role: decoded.role,
+      jwtToken: newToken,
+    });
   } catch (error) {
     console.error("Error in verifying token:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
-})
+});
 
 app.post("/auth/login", async (req, res) => {
   let { username, password } = req.body;
@@ -1162,7 +916,6 @@ app.post("/auth/login", async (req, res) => {
     if (response.data.api_status == "success") {
       const role = response.data.userInfo.account_type;
       if (role === "students") {
-
         //find student by username in student if not exist create one
 
         const student = await Students.findOne({ S_id: username });
@@ -1182,7 +935,11 @@ app.post("/auth/login", async (req, res) => {
           { username: response.data.userInfo.username, role: "student" },
           process.env.JWT_SECRET
         );
-        return res.json({ username: response.data.userInfo.username, role: "student", jwtToken });
+        return res.json({
+          username: response.data.userInfo.username,
+          role: "student",
+          jwtToken,
+        });
       }
 
       if (role === "personel") {
@@ -1203,7 +960,7 @@ app.post("/auth/login", async (req, res) => {
           }
 
           const jwtToken = jwt.sign(
-            { username, role: "admin"},
+            { username, role: "admin" },
             process.env.JWT_SECRET
           );
           return res.json({ username, role: "admin", jwtToken });
@@ -1234,127 +991,6 @@ app.post("/auth/login", async (req, res) => {
     console.error("Error in login:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
-
-});
-
-// app.post("/auth/info", async (req, res) => {
-//   const { S_username } = req.body.replace("s", "");
-//   if (!S_username) {
-//     return res.status(400).json({ message: "Missing username" });
-//   }
-
-//   try {
-//     const formData = new FormData();
-//     formData.append("username", S_username);
-
-//     const config = {
-//       method: "post",
-//       url: "https://account.kmutnb.ac.th/api/account-api/user-info",
-//       headers: {
-//         Authorization: "Bearer nK6p0wT-8NVHUwB8p0e9QSYBSaIZGp9D",
-//       },
-//       data: formData,
-//     };
-//     // {
-//     //   api_status: 'success',
-//     //   api_status_code: 202,
-//     //   api_message: 'Authentication success',
-//     //   api_timestamp: '2024-10-14 00:55:14',
-//     //   userInfo: {
-//     //     username: 's6304062620061',
-//     //     displayname: 'ณัชริกา กันทะสอน',
-//     //     firstname_en: 'NATCHARIKA',
-//     //     lastname_en: 'KUNTHASON',
-//     //     pid: '1100703269736',
-//     //     person_key: '',
-//     //     email: 's6304062620061@kmutnb.ac.th',
-//     //     account_type: 'students'
-//     //   }
-//     // }
-
-
-//     const response = await axios.request(config);
-//     // search student by username in student if not exist create one
-
-//     const username = response.userInfo.username.replace(/^s/, "")
-//     const student = await Students.findOne({ S_id: username });
-
-//     if (!student) {
-//       const newStudent = new Students({
-//         S_id: username,
-//         S_name: response.userInfo.displayname,
-//         S_email: response.userInfo.email,
-//         S_pid: response.userInfo.pid,
-//         S_account_type: response.userInfo.account_type,
-//       });
-//       await newStudent.save();
-//     }
-
-//     return res.json(response.data);
-//   } catch (error) {
-//     console.error("Error in getting user info:", error);
-//     return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// });
-
-// app.delete("/students/:username", async (req, res) => {
-//   const username = req.params.username;
-//   if (!username) {
-//     return res.status(400).json({ message: "Username is required" });
-//   }
-
-//   try {
-//     const result = await Student.findOneAndDelete({ S_id: username });
-//     if (!result) {
-//       return res.status(404).json({ message: "Student not found" });
-//     }
-//     res.json(result);
-//   } catch (error) {
-//     res.status(500).json({ message: "Internal Server Error" });
-//   }
-// });
-
-// app.get("/students", async (req, res) => {
-//   const { S_id } = req.query;
-//   console.log("Received st_id:", S_id); // Log the received st_id
-
-//   try {
-//     const students = S_id
-//       ? await Students.find({ S_id })
-//       : await Students.find();
-//     console.log("Fetched students:", students); // Log fetched students
-//     res.json(students);
-//   } catch (error) {
-//     console.error("Error fetching students:", error);
-//     res.status(500).send("Internal Server Error");
-//   }
-// });
-
-// app.post("/students", async (req, res) => {
-//   try {
-//     // Modify properties of req.body if necessary
-//     const newStudentData = { ...req.body };
-
-//     if (typeof newStudentData.S_id === "string") {
-//       newStudentData.S_id = newStudentData.S_id.replace("s", ""); // Example of replacing "s" in st_id
-//     }
-
-//     const student = new Students(newStudentData);
-//     const result = await student.save();
-//     res.json(result);
-//   } catch (error) {
-//     console.error("Error creating student:", error);
-//     res.status(500).json({ message: error.message });
-//   }
-// });
-
-app.post('/admins', (req, res) => {
-  res.status(201).send('Admin created successfully');
-});
-
-
-app.post('/teacher', (req, res) => {
-  res.status(201).send('Teacher created successfully');
 });
 
 // app.post('/assignteacher', async(req, res) => {
@@ -1376,14 +1012,14 @@ app.post('/teacher', (req, res) => {
 //   try{
 //     await Project.findByIdAndUpdate(project._id, { lecturer: teacher });
 //     res.json({ body: project });
-//   } catch (error) { 
+//   } catch (error) {
 //     console.error("Error assigning teacher:", error);
 //     res.status(500).json({ message: "Internal Server Error" });
 //   }
 // })
-app.post('/assignteacher', async (req, res) => {
+
+app.post("/assignteacher", async (req, res) => {
   const project = await Project.findOne({ projectId: req.body.projectId });
-  // req.body.T_id = [T_id] find every teacher in the array
   const teacher = await Teacher.find({ T_id: { $in: req.body.T_id } });
 
   if (!project) {
@@ -1393,18 +1029,13 @@ app.post('/assignteacher', async (req, res) => {
   if (!teacher || teacher.length === 0) {
     return res.status(404).json({ message: "Teacher not found" });
   }
-
-  // update project with teacher only T_id and T_name
   try {
     await Project.findByIdAndUpdate(project._id, { lecturer: teacher });
-    // No response returned
   } catch (error) {
     console.error("Error assigning teacher:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
-
-
 
 //ocr
 const upload = multer();
@@ -1413,7 +1044,7 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
   try {
     const studentId = req.body.std;
     const studentName = req.body.stdName;
-    const directoryPath = `./ocr/upload/${studentId}`
+    const directoryPath = `./ocr/upload/${studentId}`;
 
     // ตรวจสอบและสร้างไดเรกทอรีหากยังไม่มี
     if (!fs.existsSync(directoryPath)) {
@@ -1468,9 +1099,7 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
       //   }
       // );
 
-      res
-        .status(200)
-        .json({ message: "Files uploaded" });
+      res.status(200).json({ message: "Files uploaded" });
     });
   } catch (error) {
     console.error("Error in file upload process:", error);
@@ -1482,16 +1111,15 @@ app.patch("/files/:fi_id", async (req, res) => {
   const { fi_id } = req.params;
 
   try {
-    const result = await file.findOneAndUpdate(
-      { fi_id },
-      { new: true }
-    );
+    const result = await file.findOneAndUpdate({ fi_id }, { new: true });
 
     if (!result) {
       return res.status(404).json({ message: "File not found." });
     }
 
-    res.status(200).json({ message: "File status updated successfully.", result });
+    res
+      .status(200)
+      .json({ message: "File status updated successfully.", result });
   } catch (error) {
     console.error("Error updating file status:", error);
     res.status(500).json({ message: "Error updating file status." });
