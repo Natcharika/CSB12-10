@@ -14,6 +14,7 @@ const csb04Schema = new mongoose.Schema({
         status: String,
         comment: String
     }],
+    grade:String,
 });
 
 module.exports = mongoose.model('csb04', csb04Schema);

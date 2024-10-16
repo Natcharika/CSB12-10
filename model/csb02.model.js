@@ -13,6 +13,7 @@ const csb02Schema = new mongoose.Schema({
         status: String,
         comment: String
     }],
+    grade:String,
 });
 
 module.exports = mongoose.model('csb02', csb02Schema);

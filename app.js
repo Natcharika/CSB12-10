@@ -27,8 +27,11 @@ const csb01 = require("./model/csb01.model");
 const csb02 = require("./model/csb02.model");
 const csb03 = require("./model/csb03.model");
 const csb04 = require("./model/csb04.model");
+const anouncement = require("./model/anouncement.model");
 
-const adminUser = ["nateep", "admin2", "admin3"];
+
+// const adminUser = ["nateep", "alisah", "kriangkraia", "chantimap"];
+const adminUser = ["admin1", "admin2", "admin3", "admin4"];
 
 const app = express();
 app.use(cors());
@@ -194,6 +197,11 @@ app.post("/appointHeadOfDepartment", async (req, res) => {
 
 app.get("/projects", async (req, res) => {
   let Projects = await Project.find();
+  res.json({ body: Projects });
+});
+
+app.get("/students", async (req, res) => {
+  let Projects = await Students.find();
   res.json({ body: Projects });
 });
 
@@ -649,7 +657,7 @@ app.get("/csb02", async (req, res) => {
 });
 
 app.post("/chair-csb02", async (req, res) => {
-  const { projectId, confirmScore, logBookScore } = req.body.params;
+  const { projectId, confirmScore, logBookScore,grade } = req.body.params;
 
   try {
     // Check if an entry for the project already exists
@@ -659,6 +667,7 @@ app.post("/chair-csb02", async (req, res) => {
       // Update existing entry
       existingCsb02.confirmScore = confirmScore;
       existingCsb02.logBookScore = logBookScore;
+      existingCsb02.grade = grade;
       await existingCsb02.save();
       return res.json({
         message: "CSB02 updated successfully!",
@@ -666,7 +675,7 @@ app.post("/chair-csb02", async (req, res) => {
       });
     } else {
       // Create a new entry
-      const newCsb02 = new csb02({ projectId, confirmScore, logBookScore });
+      const newCsb02 = new csb02({ projectId, confirmScore, logBookScore,grade });
       await newCsb02.save();
       return res.json({
         message: "CSB02 created successfully!",
@@ -959,8 +968,7 @@ app.get("/csb04", async (req, res) => {
 });
 
 app.post("/chair-csb04", async (req, res) => {
-  const { projectId, confirmScore, logBookScore, exhibitionScore } =
-    req.body.params;
+  const { projectId, confirmScore, logBookScore, exhibitionScore ,grade} = req.body.params;
 
   try {
     // Check if an entry for the project already exists
@@ -970,7 +978,8 @@ app.post("/chair-csb04", async (req, res) => {
       // Update existing entry
       existingCsb04.confirmScore = confirmScore;
       existingCsb04.logBookScore = logBookScore;
-      existingCsb04.logBookScore = exhibitionScore;
+      existingCsb04.exhibitionScore = exhibitionScore;
+      existingCsb04.grade = grade;
       await existingCsb04.save();
       return res.json({
         message: "CSB03 updated successfully!",
@@ -983,6 +992,7 @@ app.post("/chair-csb04", async (req, res) => {
         confirmScore,
         logBookScore,
         exhibitionScore,
+        grade,
       });
       await newCsb04.save();
       return res.json({
@@ -1299,10 +1309,15 @@ app.post("/auth/login", async (req, res) => {
 
 app.post("/assignteacher", async (req, res) => {
   console.log("Received request:", req.body.params);
-  const { projectId, T_name } = req.body.params; // Adjusted to destructure directly from req.body
+  const { projectId, T_name } = req.body.params; // Here, T_name contains the teacher IDs
+
+  // Ensure projectId and T_name are present
+  if (!projectId || !T_name || T_name.length === 0) {
+      return res.status(400).json({ message: "Invalid request: Project ID and Teacher IDs are required." });
+  }
 
   const project = await Project.findById(projectId);
-console.log("Project found:", project); // Use findById for a direct lookup
+  console.log("Project found:", project); // Use findById for a direct lookup
   const teachers = await Teacher.find({ T_id: { $in: T_name } }); // Match by T_id
 
   if (!project) {
@@ -1318,7 +1333,7 @@ console.log("Project found:", project); // Use findById for a direct lookup
       // Update the project with the found teachers
       project.lecturer = teachers; // Assign the lecturers directly
       await project.save(); // Save the updated project
-      res.status(200).json({ message: "Lecturer assigned successfully!" }); // Return success message
+      res.status(200).json({ message: "Lecturer(s) assigned successfully!" }); // Return success message
   } catch (error) {
       console.error("Error assigning teacher:", error);
       res.status(500).json({ message: "Internal Server Error" });
@@ -1332,11 +1347,10 @@ const upload = multer();
 
 app.post("/files", upload.any("transcriptFile"), async (req, res) => {
   try {
-    const studentId = req.body.std;
-    const studentName = req.body.stdName;
+    let studentId = req.body.std; // Use let instead of const
     const directoryPath = `./ocr/upload/${studentId}`;
 
-    // ตรวจสอบและสร้างไดเรกทอรีหากยังไม่มี
+    // Check and create directory if it doesn't exist
     if (!fs.existsSync(directoryPath)) {
       fs.mkdirSync(directoryPath, { recursive: true });
     }
@@ -1354,13 +1368,12 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
       })
     );
 
-    // ค้นหาและอัปเดตไฟล์ใน MongoDB
+    // Find and update the file in MongoDB
     let document = await file.findOne({ fi_id: studentId });
 
     if (!document) {
       await file.create({
         fi_id: studentId,
-        fi_name: studentName,
         fi_file: listfile,
         fi_result: "",
         fi_status: "ยังไม่ได้ตรวจสอบ",
@@ -1378,16 +1391,6 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
         return res.status(500).json({ message: "Error checking file." });
       }
       console.log(`Python script output: ${stdout}`);
-
-      // await file.updateOne(
-      //   { fi_id: studentId },
-      //   {
-      //     $set: {
-      //       fi_result: result,
-      //       fi_status: "ได้รับการตรวจสอบแล้ว",
-      //     },
-      //   }
-      // );
 
       res.status(200).json({ message: "Files uploaded" });
     });
@@ -1415,5 +1418,51 @@ app.patch("/files/:fi_id", async (req, res) => {
     res.status(500).json({ message: "Error updating file status." });
   }
 });
+
+app.get("/files", async (req, res) => {
+  let File = await file.find();
+  res.json({ body: File });
+});
+
+
+
+
+
+//anouncement
+app.get('/anouncements', async (req, res) => {
+  try {
+      const anouncements = await anouncement.find(); // or whatever your query is
+      console.log('Fetched announcements:', anouncements);
+      res.json({ data: { body: anouncements } }); // Ensure it follows the expected structure
+  } catch (error) {
+      console.error('Error fetching announcements:', error);
+      res.status(500).json({ message: 'Error fetching announcements' });
+  }
+});
+
+
+app.post('/anouncements', async (req, res) => {
+  const { Exam_o_CSB01, Exam_o_CSB02, Exam_o_CSB03, Exam_o_CSB04 } = req.body;
+
+  try {
+      let Anouncement = await anouncement.findOneAndUpdate(
+          {}, // Empty filter to update the first record
+          {
+              examcsb01: Exam_o_CSB01,
+              examcsb02: Exam_o_CSB02,
+              examcsb03: Exam_o_CSB03,
+              examcsb04: Exam_o_CSB04,
+          },
+          { new: true, upsert: true } // Create if doesn't exist
+      );
+
+      res.status(200).json({ message: 'Exam status updated successfully', Anouncement });
+  } catch (error) {
+      console.error('Error updating exam status:', error);
+      res.status(500).json({ message: 'Failed to update exam status' });
+  }
+});
+
+
 
 module.exports = app;

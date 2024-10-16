@@ -1,9 +1,10 @@
 const mongoose = require("mongoose");
 
 const anoucemnetSchema = new mongoose.Schema({
-    examName: String,
-    examStartDate: Date,
-    examEndDate: Date,
+    examcsb01: { type: String, required: true },
+    examcsb02: { type: String, required: true },
+    examcsb03: { type: String, required: true },
+    examcsb04: { type: String, required: true },
 });
 
-module.exports = mongoose.model("Anoucemnet", anoucemnetSchema);
+module.exports = mongoose.model("anouncement", anoucemnetSchema);
