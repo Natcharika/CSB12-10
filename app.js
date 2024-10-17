@@ -29,9 +29,26 @@ const csb03 = require("./model/csb03.model");
 const csb04 = require("./model/csb04.model");
 const anouncement = require("./model/anouncement.model");
 
-
+const adminUser = ["nateep", "kriangkraia", "chantimap"];
 // const adminUser = ["nateep", "alisah", "kriangkraia", "chantimap"];
-const adminUser = ["admin1", "admin2", "admin3", "admin4"];
+// const adminUser = ["admin1", "admin2", "admin3", "admin4"];
+
+const middlewareExtractJwt = (req, res, next) => {
+  const token = req.header("Authorization").split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Auth Error" });
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    console.log("decoded22", decoded);
+
+    next();
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ message: "Invalid Token" });
+  }
+};
 
 const app = express();
 app.use(cors());
@@ -65,7 +82,7 @@ app.post("/create-form", async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    console.log("Received body:", req.body); // Log the entire body
+    console.log("Received body:", req.body); // Log the entire bodys
     // Create a new project
     const projects = new Project({
       projectName,
@@ -96,51 +113,81 @@ app.post("/create-room-management", async (req, res) => {
         .status(400)
         .json({ error: "Teachers must be a defined array" });
     }
+    // Check if the room is already booked for the given date
+    const existingRoom = await Room.findOne({
+      roomExam: roomExam,
+      dateExam: dateExam,
+      "projects.start_in_time": { $in: projects.map((p) => p.start_in_time) },
+    });
+    if (existingRoom) {
+      return res.status(400).json({
+        error:
+          "ห้องสอบนี้ได้ถูกจัดไว้แล้วในวันที่เลือก กรุณาเลือกวันอื่นหรือห้องสอบอื่น",
+      });
+    }
 
-    const room = await Room.create({
+    await Room.create({
       roomExam,
-      nameExam,
+      nameExam: nameExam,
       dateExam,
-      teachers, // Updated referees to teachers
+      teachers: teachers, // Updated referees to teachers
       projects,
     });
 
     for (const project of projects) {
       const { projectId } = project;
-      const scoreUpdate = {
-        roomExam,
-        dateExam,
-        referee: teachers.map(
-          // Updated referees to teachers
-          ({ T_id, T_name, role }) => ({
+      var exam;
+      if (nameExam == "สอบหัวข้อ") {
+        exam = new csb01({
+          projectId,
+          confirmScore: 0,
+          unconfirmScore: 0,
+          referee: teachers.map(({ T_id, T_name, role }) => ({
             T_id,
             T_name,
             role,
             score: 0,
-          })
-        ),
-        limitReferee: teachers.length, // Updated referees to teachers
-        totalScore: 0,
-        limitScore: 100,
-        resultStatus: 0,
-      };
-      const examField = `CSB${nameExam.split("CSB")[1]}`;
-      await Score.findOneAndUpdate(
-        { projectId },
-        {
-          $set: {
-            [`${examField}.roomExam`]: scoreUpdate.roomExam,
-            [`${examField}.dateExam`]: scoreUpdate.dateExam,
-            [`${examField}.referees`]: scoreUpdate.referee, // Retain referees field for Score schema
-            [`${examField}.limitReferee`]: scoreUpdate.limitReferee,
-            [`${examField}.totalScore`]: scoreUpdate.totalScore,
-            [`${examField}.limitScore`]: scoreUpdate.limitScore,
-            [`${examField}.activeStatus`]: scoreUpdate.activeStatus,
-            [`${examField}.resultStatus`]: scoreUpdate.resultStatus,
-          },
-        },
-        { new: true, upsert: true }
-      );
+            comment: "",
+            status: "waiting",
+          })),
+        });
+      } else if (nameExam == "สอบก้าวหน้า") {
+        exam = new csb02({
+          projectId,
+          confirmScore: 0,
+          unconfirmScore: 0,
+          logBookScore: 0,
+          referee: teachers.map(({ T_id, T_name, role }) => ({
+            T_id,
+            T_name,
+            role,
+            score: 0,
+            comment: "",
+            status: "waiting",
+          })),
+        });
+      } else if (nameExam == "สอบป้องกัน") {
+        exam = new csb03({
+          projectId,
+          confirmScore: 0,
+          unconfirmScore: 0,
+          exhibitionScore: 0,
+          referee: teachers.map(({ T_id, T_name, role }) => ({
+            T_id,
+            T_name,
+            role,
+            score: 0,
+            comment: "",
+            status: "waiting",
+          })),
+        });
+      }
+      console.log("project ", projectId, " exam ", exam);
+
+      const result = await exam.save();
+      if (!result) {
+        return res.status(400).json({ error: "Error creating exam" });
+      }
     }
     res.json({ message: "Room management and score updated successfully!" });
   } catch (error) {
@@ -594,52 +641,147 @@ app.post("/rejectCSB02", async (req, res) => {
   }
 });
 
-app.post("/score-csb02", async (req, res) => {
-  const { projectId, unconfirmScore, comment, referee } = req.body.params;
+app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
+  const { _id, score, comment, nameExam } = req.body.params;
+  const { username } = req.user;
+  console.log("req.body", req.body);
 
   try {
-    // Check if a document with the given projectId already exists
-    let existingCsb02 = await csb02.findOne({ projectId });
-
-    if (existingCsb02) {
-      // Update the existing document
-      existingCsb02.unconfirmScore = unconfirmScore;
-      existingCsb02.referee = referee || [];
-      existingCsb02.comment = comment || "";
-      const updatedCsb02 = await existingCsb02.save();
-
-      // Send the updated document back with all fields included
-      res.json({
-        message: "CSB02 score updated successfully",
-        project: {
-          _id: updatedCsb02._id,
-          projectId: updatedCsb02.projectId,
-          unconfirmScore: updatedCsb02.unconfirmScore,
-          comment: updatedCsb02.comment,
-          referee: updatedCsb02.referee,
+    if (nameExam == "สอบหัวข้อ") {
+      let existingCsb01 = await csb01.findOneAndUpdate(
+        {
+          _id: _id, // The document ID to match
+          "referee.T_id": username, // Find the specific referee with the matching T_id
         },
-      });
-    } else {
-      // Create a new document if it doesn't exist
-      const newCsb02 = new csb02({
-        projectId,
+        {
+          $set: {
+            "referee.$.score": score, // Update the score for the matching referee
+            "referee.$.comment": comment, // Update comment for the matching referee
+            "referee.$.status": "approved", // Update status for the matching referee
+          },
+        },
+        { new: true } // Return the updated document
+      );
+
+      if (!existingCsb01) {
+        return res.status(404).json({ message: "CSB01 not found" });
+      }
+
+      // Check if all referees have a status other than "waiting"
+      const allNotWaiting = existingCsb01.referee.every(
+        (ref) => ref.status !== "waiting"
+      );
+
+      let unconfirmScore = 0;
+      if (allNotWaiting) {
+        // Calculate unconfirmScore by summing the scores of all referees
+        unconfirmScore = existingCsb01.referee.reduce(
+          (sum, ref) => sum + ref.score,
+          0
+        );
+
+        // Update the unconfirmScore field in the document
+        await csb01.findByIdAndUpdate(
+          _id,
+          { $set: { unconfirmScore } },
+          { new: true }
+        );
+      }
+
+      return res.json({
+        message: "CSB01 score updated successfully",
+        project: existingCsb01,
         unconfirmScore,
-        referee,
-        comment,
       });
+    }
 
-      const savedCsb02 = await newCsb02.save();
-
-      // Send the newly created document back with all fields included
-      res.json({
-        message: "CSB02 score saved successfully",
-        project: {
-          _id: savedCsb02._id,
-          projectId: savedCsb02.projectId,
-          unconfirmScore: savedCsb02.unconfirmScore,
-          comment: savedCsb02.comment,
-          referee: savedCsb02.referee,
+    if (nameExam == "สอบก้าวหน้า") {
+      let existingCsb02 = await csb02.findOneAndUpdate(
+        {
+          _id: _id, // The document ID to match
+          "referee.T_id": username, // Find the specific referee with the matching T_id
         },
+        {
+          $set: {
+            "referee.$.score": score, // Update the score for the matching referee
+            "referee.$.comment": comment, // Update comment for the matching referee
+            "referee.$.status": "approved", // Update status for the matching referee
+          },
+        },
+        { new: true } // Return the updated document
+      );
+
+      if (!existingCsb02) {
+        return res.status(404).json({ message: "CSB02 not found" });
+      }
+
+      const allNotWaiting = existingCsb02.referee.every(
+        (ref) => ref.status !== "waiting"
+      );
+
+      let unconfirmScore = 0;
+      if (allNotWaiting) {
+        unconfirmScore = existingCsb02.referee.reduce(
+          (sum, ref) => sum + ref.score,
+          0
+        );
+
+        await csb02.findByIdAndUpdate(
+          _id,
+          { $set: { unconfirmScore } },
+          { new: true }
+        );
+      }
+
+      return res.json({
+        message: "CSB02 score updated successfully",
+        project: existingCsb02,
+        unconfirmScore,
+      });
+    }
+
+    if (nameExam == "สอบป้องกัน") {
+      let existingCsb03 = await csb03.findOneAndUpdate(
+        {
+          _id: _id, // The document ID to match
+          "referee.T_id": username, // Find the specific referee with the matching T_id
+        },
+        {
+          $set: {
+            "referee.$.score": score, // Update the score for the matching referee
+            "referee.$.comment": comment, // Update comment for the matching referee
+            "referee.$.status": "approved", // Update status for the matching referee
+          },
+        },
+        { new: true } // Return the updated document
+      );
+
+      if (!existingCsb03) {
+        return res.status(404).json({ message: "CSB03 not found" });
+      }
+
+      const allNotWaiting = existingCsb03.referee.every(
+        (ref) => ref.status !== "waiting"
+      );
+
+      let unconfirmScore = 0;
+      if (allNotWaiting) {
+        unconfirmScore = existingCsb03.referee.reduce(
+          (sum, ref) => sum + ref.score,
+          0
+        );
+
+        await csb03.findByIdAndUpdate(
+          _id,
+          { $set: { unconfirmScore } },
+          { new: true }
+        );
+      }
+
+      return res.json({
+        message: "CSB03 score updated successfully",
+        project: existingCsb03,
+        unconfirmScore,
       });
     }
   } catch (error) {
@@ -657,11 +799,27 @@ app.get("/csb02", async (req, res) => {
 });
 
 app.post("/chair-csb02", async (req, res) => {
-  const { projectId, confirmScore, logBookScore,grade } = req.body.params;
+  const { projectId, confirmScore, logBookScore, grade, activeStatus } =
+    req.body.params;
 
   try {
     // Check if an entry for the project already exists
-    let existingCsb02 = await csb02.findOne({ projectId });
+    const existingCsb02 = await csb02.findOne({ projectId });
+
+    // Update the project status first
+    const updatedProject = await Project.findOneAndUpdate(
+      { _id: projectId },
+      {
+        "status.CSB02.activeStatus": activeStatus,
+        "status.CSB02.status": "passed",
+        "status.CSB02.date": new Date(),
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).json({ message: "Project not found." });
+    }
 
     if (existingCsb02) {
       // Update existing entry
@@ -675,7 +833,12 @@ app.post("/chair-csb02", async (req, res) => {
       });
     } else {
       // Create a new entry
-      const newCsb02 = new csb02({ projectId, confirmScore, logBookScore,grade });
+      const newCsb02 = new csb02({
+        projectId,
+        confirmScore,
+        logBookScore,
+        grade,
+      });
       await newCsb02.save();
       return res.json({
         message: "CSB02 created successfully!",
@@ -729,10 +892,17 @@ app.post("/depart-csb02", async (req, res) => {
 });
 
 //activecsb03
+app.get("/csb03", async (req, res) => {
+  let Csb03 = await csb03.find();
+  res.json({ body: Csb03 });
+});
+
 app.post("/student-csb03", async (req, res) => {
-  const { projectId, activeStatus, status } = req.body.params;
+  const { projectId, activeStatus, status, startDate, endDate, organization } =
+    req.body.params;
 
   try {
+    // Update the Project
     const updatedProject = await Project.findByIdAndUpdate(
       projectId,
       {
@@ -743,17 +913,29 @@ app.post("/student-csb03", async (req, res) => {
       { new: true }
     );
 
+    // Update the CSB03
+    const updatedCSB03 = await csb03.findOneAndUpdate(
+      { projectId: projectId }, // Use findOneAndUpdate for CSB03 since it uses projectId
+      {
+        startDate: startDate,
+        endDate: endDate,
+        organization: organization,
+      },
+      { new: true, upsert: true } // upsert: true will create a new document if none is found
+    );
+
     if (!updatedProject) {
       return res.status(404).json({ message: "Project not found" });
     }
 
     res.json({
-      message: "CSB04 updated successfully",
+      message: "CSB03 updated successfully",
       project: updatedProject,
+      csb03: updatedCSB03, // Include the updated CSB03 in the response if needed
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error updating CSB04" });
+    res.status(500).json({ message: "Error updating CSB03" });
   }
 });
 
@@ -968,21 +1150,42 @@ app.get("/csb04", async (req, res) => {
 });
 
 app.post("/chair-csb04", async (req, res) => {
-  const { projectId, confirmScore, logBookScore, exhibitionScore ,grade} = req.body.params;
+  const {
+    projectId,
+    confirmScore,
+    logBookScore,
+    exhibitionScore,
+    grade,
+    activeStatus,
+  } = req.body.params;
 
   try {
     // Check if an entry for the project already exists
-    let existingCsb04 = await csb04.findOne({ projectId });
+    const existingCsb04 = await csb04.findOne({ projectId });
+
+    // Update the project status first
+    const updatedProject = await Project.findOneAndUpdate(
+      { _id: projectId },
+      {
+        "status.CSB04.activeStatus": activeStatus,
+        "status.CSB04.status": "passed",
+        "status.CSB04.date": new Date(),
+      },
+      { new: true }
+    );
+
+    if (!updatedProject) {
+      return res.status(404).json({ message: "Project not found." });
+    }
 
     if (existingCsb04) {
       // Update existing entry
       existingCsb04.confirmScore = confirmScore;
       existingCsb04.logBookScore = logBookScore;
-      existingCsb04.exhibitionScore = exhibitionScore;
       existingCsb04.grade = grade;
       await existingCsb04.save();
       return res.json({
-        message: "CSB03 updated successfully!",
+        message: "CSB02 updated successfully!",
         data: existingCsb04,
       });
     } else {
@@ -991,12 +1194,11 @@ app.post("/chair-csb04", async (req, res) => {
         projectId,
         confirmScore,
         logBookScore,
-        exhibitionScore,
         grade,
       });
       await newCsb04.save();
       return res.json({
-        message: "CSB03 created successfully!",
+        message: "CSB02 created successfully!",
         data: newCsb04,
       });
     }
@@ -1071,6 +1273,128 @@ app.get("/sumary-room", async (req, res) => {
   let room = await Room.find();
   res.json({ body: room });
 });
+
+app.post(
+  "/sumary-room-by-name-exam",
+  middlewareExtractJwt,
+  async (req, res) => {
+    const { examName } = req.body;
+    const { username } = req.user;
+
+    if (!examName) {
+      return res.status(400).json({ message: "Missing examName" });
+    }
+
+    try {
+      var resultData = {
+        body: [],
+      };
+
+      if (examName == "สอบหัวข้อ") {
+        const rooms = await Room.find({ nameExam: examName });
+        for (const room of rooms) {
+          //find by username but only status is waiting
+
+          const csb01data = await csb01.find({
+            "referee.T_id": username,
+            "referee.status": "waiting",
+          });
+
+          var dataWithProjectName = [];
+          for (const data of csb01data) {
+            const Data = await Project.findById(data.projectId);
+            if (
+              room.projects &&
+              room.projects.some(
+                (project) => project.projectId === data.projectId
+              ) &&
+              room.teachers.some((ref) => ref.T_id === username)
+            ) {
+              dataWithProjectName.push({
+                projectName: Data.projectName,
+                ...data._doc,
+              });
+            }
+          }
+          const result = {
+            dateExam: room.dateExam,
+            projects: dataWithProjectName,
+          };
+
+          if (dataWithProjectName.length > 0) {
+            resultData.body.push(result);
+          }
+        }
+      } else if (examName == "สอบก้าวหน้า") {
+        const rooms = await Room.find({ nameExam: examName });
+        for (const room of rooms) {
+          const csb02data = await csb02.find({
+            "referee.T_id": username,
+            "referee.status": "waiting",
+          });
+          var dataWithProjectName = [];
+          for (const data of csb02data) {
+            const Data = await Project.findById(data.projectId);
+            if (
+              room.projects &&
+              room.projects.some(
+                (project) => project.projectId === data.projectId
+              ) &&
+              room.teachers.some((ref) => ref.T_id === username)
+            ) {
+              dataWithProjectName.push({
+                projectName: Data.projectName,
+                ...data._doc,
+              });
+            }
+          }
+          const result = {
+            dateExam: room.dateExam,
+            projects: dataWithProjectName,
+          };
+          if (dataWithProjectName.length > 0) {
+            resultData.body.push(result);
+          }
+        }
+      } else if (examName == "สอบป้องกัน") {
+        const rooms = await Room.find({ nameExam: examName });
+        for (const room of rooms) {
+          const csb03data = await csb03.find({
+            "referee.T_id": username,
+            "referee.status": "waiting",
+          });
+          var dataWithProjectName = [];
+          for (const data of csb03data) {
+            const Data = await Project.findById(data.projectId);
+            if (
+              room.projects &&
+              room.projects.some(
+                (project) => project.projectId === data.projectId
+              ) &&
+              room.teachers.some((ref) => ref.T_id === username)
+            ) {
+              dataWithProjectName.push({
+                projectName: Data.projectName,
+                ...data._doc,
+              });
+            }
+          }
+          const result = {
+            dateExam: room.dateExam,
+            projects: dataWithProjectName,
+          };
+          if (dataWithProjectName.length > 0) {
+            resultData.body.push(result);
+          }
+        }
+      }
+      return res.json(resultData);
+    } catch (error) {
+      console.error("Error in getting room summary:", error);
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+);
 
 app.get("/room-management", async (req, res) => {
   let room = await Room.find();
@@ -1313,7 +1637,9 @@ app.post("/assignteacher", async (req, res) => {
 
   // Ensure projectId and T_name are present
   if (!projectId || !T_name || T_name.length === 0) {
-      return res.status(400).json({ message: "Invalid request: Project ID and Teacher IDs are required." });
+    return res.status(400).json({
+      message: "Invalid request: Project ID and Teacher IDs are required.",
+    });
   }
 
   const project = await Project.findById(projectId);
@@ -1321,26 +1647,24 @@ app.post("/assignteacher", async (req, res) => {
   const teachers = await Teacher.find({ T_id: { $in: T_name } }); // Match by T_id
 
   if (!project) {
-      return res.status(404).json({ message: "Project not found" });
+    return res.status(404).json({ message: "Project not found" });
   }
 
   if (!teachers || teachers.length === 0) {
-      return res.status(404).json({ message: "Teacher not found" });
+    return res.status(404).json({ message: "Teacher not found" });
   }
   console.log("Teachers found:", teachers);
 
   try {
-      // Update the project with the found teachers
-      project.lecturer = teachers; // Assign the lecturers directly
-      await project.save(); // Save the updated project
-      res.status(200).json({ message: "Lecturer(s) assigned successfully!" }); // Return success message
+    // Update the project with the found teachers
+    project.lecturer = teachers; // Assign the lecturers directly
+    await project.save(); // Save the updated project
+    res.status(200).json({ message: "Lecturer(s) assigned successfully!" }); // Return success message
   } catch (error) {
-      console.error("Error assigning teacher:", error);
-      res.status(500).json({ message: "Internal Server Error" });
+    console.error("Error assigning teacher:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
-
-
 
 //ocr
 const upload = multer();
@@ -1424,45 +1748,63 @@ app.get("/files", async (req, res) => {
   res.json({ body: File });
 });
 
-
-
-
-
 //anouncement
-app.get('/anouncements', async (req, res) => {
+app.get("/anouncements", async (req, res) => {
   try {
-      const anouncements = await anouncement.find(); // or whatever your query is
-      console.log('Fetched announcements:', anouncements);
-      res.json({ data: { body: anouncements } }); // Ensure it follows the expected structure
+    const anouncements = await anouncement.find(); // or whatever your query is
+    console.log("Fetched announcements:", anouncements);
+    res.json({ data: { body: anouncements } }); // Ensure it follows the expected structure
   } catch (error) {
-      console.error('Error fetching announcements:', error);
-      res.status(500).json({ message: 'Error fetching announcements' });
+    console.error("Error fetching announcements:", error);
+    res.status(500).json({ message: "Error fetching announcements" });
   }
 });
 
-
-app.post('/anouncements', async (req, res) => {
+app.post("/anouncements", async (req, res) => {
   const { Exam_o_CSB01, Exam_o_CSB02, Exam_o_CSB03, Exam_o_CSB04 } = req.body;
 
   try {
-      let Anouncement = await anouncement.findOneAndUpdate(
-          {}, // Empty filter to update the first record
-          {
-              examcsb01: Exam_o_CSB01,
-              examcsb02: Exam_o_CSB02,
-              examcsb03: Exam_o_CSB03,
-              examcsb04: Exam_o_CSB04,
-          },
-          { new: true, upsert: true } // Create if doesn't exist
-      );
+    let Anouncement = await anouncement.findOneAndUpdate(
+      {}, // Empty filter to update the first record
+      {
+        examcsb01: Exam_o_CSB01,
+        examcsb02: Exam_o_CSB02,
+        examcsb03: Exam_o_CSB03,
+        examcsb04: Exam_o_CSB04,
+      },
+      { new: true, upsert: true } // Create if doesn't exist
+    );
 
-      res.status(200).json({ message: 'Exam status updated successfully', Anouncement });
+    res
+      .status(200)
+      .json({ message: "Exam status updated successfully", Anouncement });
   } catch (error) {
-      console.error('Error updating exam status:', error);
-      res.status(500).json({ message: 'Failed to update exam status' });
+    console.error("Error updating exam status:", error);
+    res.status(500).json({ message: "Failed to update exam status" });
   }
 });
 
+// Endpoint to get project details by projectId
+app.get("/projects/:projectId", async (req, res) => {
+  const { projectId } = req.params; // Get the projectId from the URL parameters
+  console.log("Fetching project details for ID:", projectId);
 
+  try {
+    // Find the project by ID
+    const project = await Project.findById(projectId);
+    console.log("Project found:", project);
+
+    // If the project is not found, return a 404 response
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    // Return the project data including students and lecturers
+    res.json({ body: project });
+  } catch (error) {
+    console.error("Error fetching project:", error);
+    res.status(500).json({ message: "Error fetching project data" });
+  }
+});
 
 module.exports = app;
