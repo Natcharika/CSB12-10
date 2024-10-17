@@ -29,7 +29,7 @@ const csb03 = require("./model/csb03.model");
 const csb04 = require("./model/csb04.model");
 const anouncement = require("./model/anouncement.model");
 
-const adminUser = ["nateep", "kriangkraia", "chantimap"];
+const adminUser = [ "kriangkraia", "chantimap"];
 // const adminUser = ["nateep", "alisah", "kriangkraia", "chantimap"];
 // const adminUser = ["admin1", "admin2", "admin3", "admin4"];
 
@@ -644,7 +644,6 @@ app.post("/rejectCSB02", async (req, res) => {
 app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
   const { _id, score, comment, nameExam } = req.body.params;
   const { username } = req.user;
-  console.log("req.body", req.body);
 
   try {
     if (nameExam == "สอบหัวข้อ") {
@@ -672,14 +671,16 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
         (ref) => ref.status !== "waiting"
       );
 
+      const approvedReferees = existingCsb01.referee.filter(
+        (ref) => ref.status === "approved"
+      );
+    
       let unconfirmScore = 0;
-      if (allNotWaiting) {
-        // Calculate unconfirmScore by summing the scores of all referees
-        unconfirmScore = existingCsb01.referee.reduce(
-          (sum, ref) => sum + ref.score,
-          0
-        );
-
+      if (approvedReferees.length > 0 && allNotWaiting) {
+        // Calculate unconfirmScore by summing the scores of approved referees and dividing by their count
+        const totalScore = approvedReferees.reduce((sum, ref) => sum + ref.score, 0);
+        unconfirmScore = totalScore / approvedReferees.length;
+    
         // Update the unconfirmScore field in the document
         await csb01.findByIdAndUpdate(
           _id,
@@ -719,13 +720,17 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
         (ref) => ref.status !== "waiting"
       );
 
+      const approvedReferees = existingCsb02.referee.filter(
+        (ref) => ref.status === "approved"
+      );
+    
       let unconfirmScore = 0;
-      if (allNotWaiting) {
-        unconfirmScore = existingCsb02.referee.reduce(
-          (sum, ref) => sum + ref.score,
-          0
-        );
-
+      if (approvedReferees.length > 0 && allNotWaiting) {
+        // Calculate unconfirmScore by summing the scores of approved referees and dividing by their count
+        const totalScore = approvedReferees.reduce((sum, ref) => sum + ref.score, 0);
+        unconfirmScore = totalScore / approvedReferees.length;
+    
+        // Update the unconfirmScore field in the document
         await csb02.findByIdAndUpdate(
           _id,
           { $set: { unconfirmScore } },
@@ -764,14 +769,18 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
         (ref) => ref.status !== "waiting"
       );
 
+      const approvedReferees = existingCsb03.referee.filter(
+        (ref) => ref.status === "approved"
+      );
+    
       let unconfirmScore = 0;
-      if (allNotWaiting) {
-        unconfirmScore = existingCsb03.referee.reduce(
-          (sum, ref) => sum + ref.score,
-          0
-        );
-
-        await csb03.findByIdAndUpdate(
+      if (approvedReferees.length > 0 && allNotWaiting) {
+        // Calculate unconfirmScore by summing the scores of approved referees and dividing by their count
+        const totalScore = approvedReferees.reduce((sum, ref) => sum + ref.score, 0);
+        unconfirmScore = totalScore / approvedReferees.length;
+    
+        // Update the unconfirmScore field in the document
+        await csb02.findByIdAndUpdate(
           _id,
           { $set: { unconfirmScore } },
           { new: true }
@@ -799,19 +808,30 @@ app.get("/csb02", async (req, res) => {
 });
 
 app.post("/chair-csb02", async (req, res) => {
-  const { projectId, confirmScore, logBookScore, grade, activeStatus } =
+  const { _id, unconfirmScore, logBookScore, activeStatus } =//04เปลี่ยนๆ
     req.body.params;
 
   try {
     // Check if an entry for the project already exists
-    const existingCsb02 = await csb02.findOne({ projectId });
+    const confirmScore = parseInt(unconfirmScore) + parseInt(logBookScore);//04เปลี่ยนๆ
+    const existingCsb02 = await csb02.findByIdAndUpdate(_id,
+      { $set: { activeStatus, unconfirmScore : parseInt(unconfirmScore), logBookScore : parseInt(logBookScore), confirmScore } },
+      { new: true }
+    );
+
+    if (!existingCsb02) {
+      return res.status(404).json({ message: "CSB02 not found" });
+    }
+
+    const isPassed = confirmScore >= 55;//04เปลี่ยน
 
     // Update the project status first
     const updatedProject = await Project.findOneAndUpdate(
-      { _id: projectId },
+      { _id: existingCsb02.projectId },
       {
         "status.CSB02.activeStatus": activeStatus,
-        "status.CSB02.status": "passed",
+        "status.CSB02.status": isPassed ? "passed" : "failed",
+        "status.CSB02.score": confirmScore,
         "status.CSB02.date": new Date(),
       },
       { new: true }
@@ -821,30 +841,11 @@ app.post("/chair-csb02", async (req, res) => {
       return res.status(404).json({ message: "Project not found." });
     }
 
-    if (existingCsb02) {
-      // Update existing entry
-      existingCsb02.confirmScore = confirmScore;
-      existingCsb02.logBookScore = logBookScore;
-      existingCsb02.grade = grade;
-      await existingCsb02.save();
-      return res.json({
-        message: "CSB02 updated successfully!",
-        data: existingCsb02,
-      });
-    } else {
-      // Create a new entry
-      const newCsb02 = new csb02({
-        projectId,
-        confirmScore,
-        logBookScore,
-        grade,
-      });
-      await newCsb02.save();
-      return res.json({
-        message: "CSB02 created successfully!",
-        data: newCsb02,
-      });
-    }
+    res.json({
+      message: "CSB02 updated successfully",
+      project: updatedProject
+    })
+
   } catch (error) {
     console.error("Error saving CSB02:", error);
     return res
@@ -1434,12 +1435,16 @@ app.post("/auth/level", async (req, res) => {
     }
 
     const super_role = teacher.T_super_role;
-
+    console.log("Super role:", super_role);
+    
     // find in Room.teacher that have role = main
     const chairMan = await Room.findOne({
-      teachers: { $elemMatch: { T_id: username, role: "main" } },
+      teachers: { $elemMatch: { T_id: username } }
     });
+    
 
+    console.log("Chairman:", chairMan, `Username:${username}:`);
+    
     let level = "teacher";
 
     if (super_role === "head") {
@@ -1453,7 +1458,8 @@ app.post("/auth/level", async (req, res) => {
     if (super_role === "head" && chairMan) {
       level = "all";
     }
-
+    console.log("Level:", level);
+    
     return res.json({ level });
   } catch (error) {
     console.error("Error in getting user info:", error);
@@ -1500,8 +1506,10 @@ app.post("/auth/login", async (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ message: "Missing credentials" });
   }
-  console.log(username, password);
 
+  // trim username
+
+  username = username.trim();
   try {
     const formData = new FormData();
     formData.append("username", username);
@@ -1523,7 +1531,6 @@ app.post("/auth/login", async (req, res) => {
       headersConfig
     );
 
-    console.log(response.data);
     if (response.data.api_status == "success") {
       const role = response.data.userInfo.account_type;
       if (role === "students") {
@@ -1803,6 +1810,121 @@ app.get("/projects/:projectId", async (req, res) => {
     res.json({ body: project });
   } catch (error) {
     console.error("Error fetching project:", error);
+    res.status(500).json({ message: "Error fetching project data" });
+  }
+});
+
+app.post("/get-chairman-project", middlewareExtractJwt, async (req, res) => {
+  const { username } = req.user;
+  const { nameExam } = req.body;
+
+  try {
+
+    if (nameExam === "สอบหัวข้อ"){
+      let result = []
+      let csb01Record = await csb01.find({
+        referee: {
+          $elemMatch: {
+            T_id: username,
+            role: "main"
+          }
+        },
+        confirmScore: 0
+      });
+  
+      // Check if a record was found
+      if (!csb01Record) {
+        return res.status(404).json({ message: "User does not have the role of 'main' in csb01" });
+      }
+
+      for (const data of csb01Record) {
+        const allNotWaiting = data.referee.every(
+          (ref) => ref.status !== "waiting"
+        );
+        const project = await Project.findById(data.projectId);
+        if (allNotWaiting) {
+          result.push({
+            ...data._doc,
+            projectName: project.projectName,
+            student: project.student,
+            lecturer: project.lecturer,
+          });
+        }
+      }
+
+      res.json({ data: result });
+    }
+    else if (nameExam === "สอบก้าวหน้า"){
+      let result = [];
+      let csb02Record = await csb02.find({
+        referee: {
+          $elemMatch: {
+            T_id: username,
+            role: "main"
+          }
+        },
+        confirmScore: 0
+      });
+
+      // Check if a record was found
+      if (!csb02Record) {
+        return res.status(404).json({ message: "User does not have the role of 'main' in csb02" });
+      }
+      
+      for (const data of csb02Record) {
+        const allNotWaiting = data.referee.every(
+          (ref) => ref.status !== "waiting"
+        );
+        const project = await Project.findById(data.projectId);
+        if (allNotWaiting) {
+          result.push({
+            ...data._doc,
+            projectName: project.projectName,
+            student: project.student,
+            lecturer: project.lecturer,
+          });
+        }
+      }
+
+      res.json({ data: result });
+  
+    }
+    else if (nameExam === "สอบป้องกัน"){
+      let result = [];
+      let csb03Record = await csb03.find({
+        referee: {
+          $elemMatch: {
+            T_id: username,
+            role: "main"
+          }
+        },
+        confirmScore: 0
+      });
+  
+      // Check if a record was found
+      if (!csb03Record) {
+        return res.status(404).json({ message: "User does not have the role of 'main' in csb03" });
+      }
+      for (const data of csb03Record) {
+        const allNotWaiting = data.referee.every(
+          (ref) => ref.status !== "waiting"
+        );
+        const project = await Project.findById(data.projectId);
+        if (allNotWaiting) {
+          result.push({
+            ...data._doc,
+            projectName: project.projectName,
+            student: project.student,
+            lecturer: project.lecturer,
+          });
+        }
+      }
+
+      res.json({ data: result });
+    }
+
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Error fetching project data" });
   }
 });
