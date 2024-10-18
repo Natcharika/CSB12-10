@@ -29,8 +29,8 @@ const csb03 = require("./model/csb03.model");
 const csb04 = require("./model/csb04.model");
 const anouncement = require("./model/anouncement.model");
 
-const adminUser = ["kriangkraia", "chantimap"];
-// const adminUser = ["nateep", "alisah", "kriangkraia", "chantimap"];
+// const adminUser = ["kriangkraia", "chantimap"];
+const adminUser = ["nateep", "alisah", "kriangkraia", "chantimap"];
 // const adminUser = ["admin1", "admin2", "admin3", "admin4"];
 
 const middlewareExtractJwt = (req, res, next) => {
@@ -105,6 +105,100 @@ app.post("/create-form", async (req, res) => {
 });
 
 // Updated route to reflect changes
+// app.post("/create-room-management", async (req, res) => {
+//   try {
+//     const { roomExam, nameExam, dateExam, teachers, projects } = req.body; // Updated referees to teachers
+//     if (!teachers || !Array.isArray(teachers)) {
+//       return res
+//         .status(400)
+//         .json({ error: "Teachers must be a defined array" });
+//     }
+//     // Check if the room is already booked for the given date
+//     const existingRoom = await Room.findOne({
+//       roomExam: roomExam,
+//       dateExam: dateExam,
+//       "projects.start_in_time": { $in: projects.map((p) => p.start_in_time) },
+//     });
+//     if (existingRoom) {
+//       return res.status(400).json({
+//         error:
+//           "ห้องสอบนี้ได้ถูกจัดไว้แล้วในวันที่เลือก กรุณาเลือกวันอื่นหรือห้องสอบอื่น",
+//       });
+//     }
+
+//     await Room.create({
+//       roomExam,
+//       nameExam: nameExam,
+//       dateExam,
+//       teachers: teachers, // Updated referees to teachers
+//       projects,
+//     });
+
+//     for (const project of projects) {
+//       const { projectId } = project;
+//       var exam;
+//       if (nameExam == "สอบหัวข้อ") {
+//         exam = new csb01({
+//           projectId,
+//           confirmScore: 0,
+//           unconfirmScore: 0,
+//           referee: teachers.map(({ T_id, T_name, role }) => ({
+//             T_id,
+//             T_name,
+//             role,
+//             score: 0,
+//             comment: "",
+//             status: "waiting",
+//           })),
+//         });
+//       } else if (nameExam == "สอบก้าวหน้า") {
+//         exam = new csb02({
+//           projectId,
+//           confirmScore: 0,
+//           unconfirmScore: 0,
+//           logBookScore: 0,
+//           referee: teachers.map(({ T_id, T_name, role }) => ({
+//             T_id,
+//             T_name,
+//             role,
+//             score: 0,
+//             comment: "",
+//             status: "waiting",
+//           })),
+//         });
+//       } else if (nameExam == "สอบป้องกัน") {
+//         exam = new csb03({
+//           projectId,
+//           confirmScore: 0,
+//           unconfirmScore: 0,
+//           exhibitionScore: 0,
+//           referee: teachers.map(({ T_id, T_name, role }) => ({
+//             T_id,
+//             T_name,
+//             role,
+//             score: 0,
+//             comment: "",
+//             status: "waiting",
+//           })),
+//         });
+//       }
+//       console.log("project ", projectId, " exam ", exam);
+
+//       const result = await exam.save();
+//       if (!result) {
+//         return res.status(400).json({ error: "Error creating exam" });
+//       }
+//     }
+//     res.json({ message: "Room management and score updated successfully!" });
+//   } catch (error) {
+//     console.error("Error in creating room management:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
+
+
+//ของเก่าห้ามลบ
 app.post("/create-room-management", async (req, res) => {
   try {
     const { roomExam, nameExam, dateExam, teachers, projects } = req.body; // Updated referees to teachers
@@ -113,81 +207,51 @@ app.post("/create-room-management", async (req, res) => {
         .status(400)
         .json({ error: "Teachers must be a defined array" });
     }
-    // Check if the room is already booked for the given date
-    const existingRoom = await Room.findOne({
-      roomExam: roomExam,
-      dateExam: dateExam,
-      "projects.start_in_time": { $in: projects.map((p) => p.start_in_time) },
-    });
-    if (existingRoom) {
-      return res.status(400).json({
-        error:
-          "ห้องสอบนี้ได้ถูกจัดไว้แล้วในวันที่เลือก กรุณาเลือกวันอื่นหรือห้องสอบอื่น",
-      });
-    }
 
-    await Room.create({
+    const room = await Room.create({
       roomExam,
-      nameExam: nameExam,
+      nameExam,
       dateExam,
-      teachers: teachers, // Updated referees to teachers
+      teachers, 
       projects,
     });
 
     for (const project of projects) {
       const { projectId } = project;
-      var exam;
-      if (nameExam == "สอบหัวข้อ") {
-        exam = new csb01({
-          projectId,
-          confirmScore: 0,
-          unconfirmScore: 0,
-          referee: teachers.map(({ T_id, T_name, role }) => ({
+      const scoreUpdate = {
+        roomExam,
+        dateExam,
+        referee: teachers.map(
+          // Updated referees to teachers
+          ({ T_id, T_name, role }) => ({
             T_id,
             T_name,
             role,
             score: 0,
-            comment: "",
-            status: "waiting",
-          })),
-        });
-      } else if (nameExam == "สอบก้าวหน้า") {
-        exam = new csb02({
-          projectId,
-          confirmScore: 0,
-          unconfirmScore: 0,
-          logBookScore: 0,
-          referee: teachers.map(({ T_id, T_name, role }) => ({
-            T_id,
-            T_name,
-            role,
-            score: 0,
-            comment: "",
-            status: "waiting",
-          })),
-        });
-      } else if (nameExam == "สอบป้องกัน") {
-        exam = new csb03({
-          projectId,
-          confirmScore: 0,
-          unconfirmScore: 0,
-          exhibitionScore: 0,
-          referee: teachers.map(({ T_id, T_name, role }) => ({
-            T_id,
-            T_name,
-            role,
-            score: 0,
-            comment: "",
-            status: "waiting",
-          })),
-        });
-      }
-      console.log("project ", projectId, " exam ", exam);
-
-      const result = await exam.save();
-      if (!result) {
-        return res.status(400).json({ error: "Error creating exam" });
-      }
+          })
+        ),
+        limitReferee: teachers.length, // Updated referees to teachers
+        totalScore: 0,
+        limitScore: 100,
+        resultStatus: 0,
+      };
+      const examField = `CSB${nameExam.split("CSB")[1]}`;
+      await Score.findOneAndUpdate(
+        { projectId },
+        {
+          $set: {
+            [`${examField}.roomExam`]: scoreUpdate.roomExam,
+            [`${examField}.dateExam`]: scoreUpdate.dateExam,
+            [`${examField}.referees`]: scoreUpdate.referee, // Retain referees field for Score schema
+            [`${examField}.limitReferee`]: scoreUpdate.limitReferee,
+            [`${examField}.totalScore`]: scoreUpdate.totalScore,
+            [`${examField}.limitScore`]: scoreUpdate.limitScore,
+            [`${examField}.activeStatus`]: scoreUpdate.activeStatus,
+            [`${examField}.resultStatus`]: scoreUpdate.resultStatus,
+          },
+        },
+        { new: true, upsert: true }
+      );
     }
     res.json({ message: "Room management and score updated successfully!" });
   } catch (error) {
@@ -195,7 +259,6 @@ app.post("/create-room-management", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 //แต่งตั้งหัวหน้าภาค
 // app.post("/appointHeadOfDepartment", async (req, res) => {
 //   try {
