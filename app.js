@@ -52,6 +52,12 @@ const middlewareExtractJwt = (req, res, next) => {
 
 const app = express();
 app.use(cors());
+app.use(cors({
+  origin: "http://202.44.40.169:3000", // or specify the allowed origin(s)
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 
 app.use(bodyParser.json({ limit: "5mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "5mb" }));
@@ -61,6 +67,11 @@ app.use(express.json());
 app.get("/", async (req, res) => {
   let score = await Score.find();
   res.json({ body: "hello TNP" });
+});
+
+app.get("/test", (req, res) => {
+  console.log("Test route accessed");
+  res.status(200).send("Server is working!");
 });
 
 app.post("/create-form", async (req, res) => {

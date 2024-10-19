@@ -7,4 +7,4 @@ const anoucemnetSchema = new mongoose.Schema({
     examcsb04: { type: String, required: true },
 });
 
-module.exports = mongoose.model("anouncement", anoucemnetSchema);
+module.exports = mongoose.model("anouncements", anoucemnetSchema);
