@@ -52,12 +52,11 @@ const middlewareExtractJwt = (req, res, next) => {
 
 const app = express();
 app.use(cors());
-app.use(cors({
-  origin: "http://202.44.40.169:3000", // or specify the allowed origin(s)
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-
+// app.use(cors({
+//   origin: "http://202.44.40.169:3000", // or specify the allowed origin(s)
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+// }));
 
 app.use(bodyParser.json({ limit: "5mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "5mb" }));
@@ -261,7 +260,7 @@ app.post("/create-room-management", async (req, res) => {
               role,
               score: 0,
               comment: "",
-              status: "waiting",
+              status: "รอดำเนินการ",
             })),
           });
           break;
@@ -278,7 +277,7 @@ app.post("/create-room-management", async (req, res) => {
               role,
               score: 0,
               comment: "",
-              status: "waiting",
+              status: "รอดำเนินการ",
             })),
           });
           break;
@@ -295,7 +294,7 @@ app.post("/create-room-management", async (req, res) => {
               role,
               score: 0,
               comment: "",
-              status: "waiting",
+              status: "รอดำเนินการ",
             })),
           });
           break;
@@ -435,6 +434,11 @@ app.get("/students", async (req, res) => {
   res.json({ body: Projects });
 });
 
+app.get("/students", async (req, res) => {
+  let Projects = await Students.find();
+  res.json({ body: Projects });
+});
+
 //activecsb01
 app.post("/student-csb01", async (req, res) => {
   const { projectId, activeStatus, status } = req.body.params;
@@ -447,7 +451,7 @@ app.post("/student-csb01", async (req, res) => {
       projectId,
       {
         "status.CSB01.activeStatus": activeStatus,
-        "status.CSB01.status": status || "waiting",
+        "status.CSB01.status": status || "รอดำเนินการ",
         "status.CSB01.date": new Date(),
       },
       { new: true }
@@ -506,7 +510,7 @@ app.post("/approveCSB01", async (req, res) => {
       { _id: projectId }, // Ensure you're using an object for the query
       {
         "status.CSB01.activeStatus": activeStatus,
-        "status.CSB01.status": "approved",
+        "status.CSB01.status": "ผ่านการอนุมัติจากอาจารย์",
         "status.CSB01.date": new Date(),
       },
       { new: true }
@@ -543,7 +547,7 @@ app.post("/rejectCSB01", async (req, res) => {
       { _id: projectId },
       {
         "status.CSB01.activeStatus": activeStatus,
-        "status.CSB01.status": "failed",
+        "status.CSB01.status": "ไม่ผ่าน",
         "status.CSB01.date": new Date(),
       },
       { new: true }
@@ -656,7 +660,7 @@ app.post("/chair-csb01", async (req, res) => {
       { _id: existingCsb01.projectId },
       {
         "status.CSB01.activeStatus": activeStatus,
-        "status.CSB01.status": isPassed ? "passed" : "failed",
+        "status.CSB01.status": isPassed ? "ผ่าน" : "ไม่ผ่าน",
         "status.CSB01.score": confirmScore,
         "status.CSB01.date": new Date(),
       },
@@ -712,7 +716,7 @@ app.post("/depart-csb01", async (req, res) => {
       { _id: projectId },
       {
         "status.CSB01.activeStatus": activeStatus,
-        "status.CSB01.status": "passed",
+        "status.CSB01.status": "ผ่าน",
         "status.CSB01.date": new Date(),
       },
       { new: true }
@@ -747,7 +751,7 @@ app.post("/student-csb02", async (req, res) => {
       projectId,
       {
         "status.CSB02.activeStatus": activeStatus,
-        "status.CSB02.status": status || "waiting",
+        "status.CSB02.status": status || "รอดำเนินการ",
         "status.CSB02.date": new Date(),
       },
       { new: true }
@@ -806,7 +810,7 @@ app.post("/approveCSB02", async (req, res) => {
       { _id: projectId }, // Ensure you're using an object for the query
       {
         "status.CSB02.activeStatus": activeStatus,
-        "status.CSB02.status": "approved",
+        "status.CSB02.status": "ผ่านการอนุมัติจากอาจารย์",
         "status.CSB02.date": new Date(),
       },
       { new: true }
@@ -843,7 +847,7 @@ app.post("/rejectCSB02", async (req, res) => {
       { _id: projectId },
       {
         "status.CSB02.activeStatus": activeStatus,
-        "status.CSB02.status": "failed",
+        "status.CSB02.status": "ไม่ผ่าน",
         "status.CSB02.date": new Date(),
       },
       { new: true }
@@ -878,7 +882,7 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
           $set: {
             "referee.$.score": score, // Update the score for the matching referee
             "referee.$.comment": comment, // Update comment for the matching referee
-            "referee.$.status": "approved", // Update status for the matching referee
+            "referee.$.status": "ผ่านการอนุมัติจากอาจารย์", // Update status for the matching referee
           },
         },
         { new: true } // Return the updated document
@@ -890,11 +894,11 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
 
       // Check if all referees have a status other than "waiting"
       const allNotWaiting = existingCsb01.referee.every(
-        (ref) => ref.status !== "waiting"
+        (ref) => ref.status !== "รอดำเนินการ"
       );
 
       const approvedReferees = existingCsb01.referee.filter(
-        (ref) => ref.status === "approved"
+        (ref) => ref.status === "ผ่านการอนุมัติจากอาจารย์"
       );
 
       let unconfirmScore = 0;
@@ -931,7 +935,7 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
           $set: {
             "referee.$.score": score, // Update the score for the matching referee
             "referee.$.comment": comment, // Update comment for the matching referee
-            "referee.$.status": "approved", // Update status for the matching referee
+            "referee.$.status": "ผ่านการอนุมัติจากอาจารย์", // Update status for the matching referee
           },
         },
         { new: true } // Return the updated document
@@ -942,11 +946,11 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
       }
 
       const allNotWaiting = existingCsb02.referee.every(
-        (ref) => ref.status !== "waiting"
+        (ref) => ref.status !== "รอดำเนินการ"
       );
 
       const approvedReferees = existingCsb02.referee.filter(
-        (ref) => ref.status === "approved"
+        (ref) => ref.status === "ผ่านการอนุมัติจากอาจารย์"
       );
 
       let unconfirmScore = 0;
@@ -983,7 +987,7 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
           $set: {
             "referee.$.score": score, // Update the score for the matching referee
             "referee.$.comment": comment, // Update comment for the matching referee
-            "referee.$.status": "approved", // Update status for the matching referee
+            "referee.$.status": "ผ่านการอนุมัติจากอาจารย์", // Update status for the matching referee
           },
         },
         { new: true } // Return the updated document
@@ -994,11 +998,11 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
       }
 
       const allNotWaiting = existingCsb03.referee.every(
-        (ref) => ref.status !== "waiting"
+        (ref) => ref.status !== "รอดำเนินการ"
       );
 
       const approvedReferees = existingCsb03.referee.filter(
-        (ref) => ref.status === "approved"
+        (ref) => ref.status === "ผ่านการอนุมัติจากอาจารย์"
       );
 
       let unconfirmScore = 0;
@@ -1068,7 +1072,7 @@ app.post("/chair-csb02", async (req, res) => {
       { _id: existingCsb02.projectId },
       {
         "status.CSB02.activeStatus": activeStatus,
-        "status.CSB02.status": isPassed ? "passed" : "failed",
+        "status.CSB02.status": isPassed ? "ผ่าน" : "ไม่ผ่าน",
         "status.CSB02.score": confirmScore,
         "status.CSB02.date": new Date(),
       },
@@ -1106,7 +1110,7 @@ app.post("/depart-csb02", async (req, res) => {
       { _id: projectId },
       {
         "status.CSB02.activeStatus": activeStatus,
-        "status.CSB02.status": "passed",
+        "status.CSB02.status": "ผ่าน",
         "status.CSB02.date": new Date(),
       },
       { new: true }
@@ -1145,7 +1149,7 @@ app.post("/student-csb03", async (req, res) => {
       projectId,
       {
         "status.CSB03.activeStatus": activeStatus,
-        "status.CSB03.status": status || "waiting",
+        "status.CSB03.status": status || "รอดำเนินการ",
         "status.CSB03.date": new Date(),
       },
       { new: true }
@@ -1184,7 +1188,7 @@ app.post("/approveCSB03", async (req, res) => {
       projectId,
       {
         "status.CSB03.activeStatus": activeStatus,
-        "status.CSB03.status": "approved",
+        "status.CSB03.status": "ผ่านการอนุมัติจากอาจารย์",
         "status.CSB03.date": new Date(),
       },
       { new: true }
@@ -1218,7 +1222,7 @@ app.post("/rejectCSB03", async (req, res) => {
       { _id: projectId },
       {
         "status.CSB03.activeStatus": activeStatus,
-        "status.CSB03.status": "failed",
+        "status.CSB03.status": "ไม่ผ่าน",
         "status.CSB03.date": new Date(),
       },
       { new: true }
@@ -1250,7 +1254,7 @@ app.post("/student-csb04", async (req, res) => {
       projectId,
       {
         "status.CSB04.activeStatus": activeStatus,
-        "status.CSB04.status": status || "waiting",
+        "status.CSB04.status": status || "รอดำเนินการ",
         "status.CSB04.date": new Date(),
       },
       { new: true }
@@ -1277,7 +1281,7 @@ app.post("/approveCSB04", async (req, res) => {
       projectId,
       {
         "status.CSB04.activeStatus": activeStatus,
-        "status.CSB04.status": "approved",
+        "status.CSB04.status": "ผ่านการอนุมัติจากอาจารย์",
         "status.CSB04.date": new Date(),
       },
       { new: true }
@@ -1311,7 +1315,7 @@ app.post("/rejectCSB04", async (req, res) => {
       { _id: projectId },
       {
         "status.CSB04.activeStatus": activeStatus,
-        "status.CSB04.status": "failed",
+        "status.CSB04.status": "ไม่ผ่าน",
         "status.CSB04.date": new Date(),
       },
       { new: true }
@@ -1431,7 +1435,7 @@ app.post("/chair-csb04", async (req, res) => {
       { _id: existingCsb04.projectId },
       {
         "status.CSB04.activeStatus": activeStatus,
-        "status.CSB04.status": isPassed ? "passed" : "failed",
+        "status.CSB04.status": isPassed ? "ผ่าน" : "ไม่ผ่าน",
         "status.CSB04.score": confirmScore,
         "status.CSB04.date": new Date(),
       },
@@ -1494,7 +1498,7 @@ app.post("/depart-csb04", async (req, res) => {
       { _id: projectId },
       {
         "status.CSB04.activeStatus": activeStatus,
-        "status.CSB04.status": "passed",
+        "status.CSB04.status": "ผ่าน",
         "status.CSB04.date": new Date(),
       },
       { new: true }
@@ -1567,7 +1571,7 @@ app.post(
 
           const csb01data = await csb01.find({
             "referee.T_id": username,
-            "referee.status": "waiting",
+            "referee.status": "รอดำเนินการ",
           });
           console.log("CSB01 Data:", csb01data);
 
@@ -1601,7 +1605,7 @@ app.post(
         for (const room of rooms) {
           const csb02data = await csb02.find({
             "referee.T_id": username,
-            "referee.status": "waiting",
+            "referee.status": "รอดำเนินการ",
           });
           var dataWithProjectName = [];
           for (const data of csb02data) {
@@ -1632,7 +1636,7 @@ app.post(
         for (const room of rooms) {
           const csb03data = await csb03.find({
             "referee.T_id": username,
-            "referee.status": "waiting",
+            "referee.status": "รอดำเนินการ",
           });
           var dataWithProjectName = [];
           for (const data of csb03data) {
@@ -2000,31 +2004,76 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
   }
 });
 
+// app.patch("/files/:fi_id", async (req, res) => {
+//   const { fi_id } = req.params;
+
+//   try {
+//     const result = await file.findOneAndUpdate({ fi_id }, { new: true });
+
+//     if (!result) {
+//       return res.status(404).json({ message: "File not found." });
+//     }
+
+//     res
+//       .status(200)
+//       .json({ message: "File status updated successfully.", result });
+//   } catch (error) {
+//     console.error("Error updating file status:", error);
+//     res.status(500).json({ message: "Error updating file status." });
+//   }
+// });
+
 app.patch("/files/:fi_id", async (req, res) => {
   const { fi_id } = req.params;
+  const { fi_status } = req.body.params; // Extracting fi_status from the request body
 
   try {
-    const result = await file.findOneAndUpdate({ fi_id }, { new: true });
+    const result = await file.findOneAndUpdate({ fi_id }, { fi_status }, { new: true });
 
     if (!result) {
       return res.status(404).json({ message: "File not found." });
     }
 
-    res
-      .status(200)
-      .json({ message: "File status updated successfully.", result });
+    res.status(200).json({ message: "File status updated successfully.", result });
   } catch (error) {
     console.error("Error updating file status:", error);
     res.status(500).json({ message: "Error updating file status." });
   }
 });
 
+
+
 app.get("/files", async (req, res) => {
-  let File = await file.find();
-  res.json({ body: File });
+  try {
+    const files = await file.find();
+    res.json({ body: files });
+  } catch (error) {
+    console.error("Error fetching files:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
+// app.post("/files/:id", async (req, res) => {
+//   try {
+//     const { fi_status } = req.body;
+//     const file = await file.findoneIdAndUpdate(req.params.id, { fi_status }, { new: true });
+//     if (!file) {
+//       return res.status(404).json({ message: "File not found" });
+//     }
+//     res.json(file);
+//   } catch (error) {
+//     console.error("Error updating file status:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// });
+
+
+
+
 //anouncement
+
+
+
 app.get("/anouncements", async (req, res) => {
   try {
     const anouncements = await anouncement.find(); // or whatever your query is
@@ -2109,7 +2158,7 @@ app.post("/get-chairman-project", middlewareExtractJwt, async (req, res) => {
 
       for (const data of csb01Record) {
         const allNotWaiting = data.referee.every(
-          (ref) => ref.status !== "waiting"
+          (ref) => ref.status !== "รอดำเนินการ"
         );
         const project = await Project.findById(data.projectId);
         if (allNotWaiting) {
@@ -2144,7 +2193,7 @@ app.post("/get-chairman-project", middlewareExtractJwt, async (req, res) => {
 
       for (const data of csb02Record) {
         const allNotWaiting = data.referee.every(
-          (ref) => ref.status !== "waiting"
+          (ref) => ref.status !== "รอดำเนินการ"
         );
         const project = await Project.findById(data.projectId);
         if (allNotWaiting) {
@@ -2178,7 +2227,7 @@ app.post("/get-chairman-project", middlewareExtractJwt, async (req, res) => {
       }
       for (const data of csb03Record) {
         const allNotWaiting = data.referee.every(
-          (ref) => ref.status !== "waiting"
+          (ref) => ref.status !== "รอดำเนินการ"
         );
         const project = await Project.findById(data.projectId);
         if (allNotWaiting) {

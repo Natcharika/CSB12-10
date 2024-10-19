@@ -17,25 +17,25 @@ const projectSchema = new mongoose.Schema({
     status: {
         CSB01: {
             date: { type: Date, default: Date.now },
-            status: {type: String, enum: ["waiting", "failed", "passed"], default: "waiting"},
+            status: {type: String, enum: ["รอดำเนินการ", "ไม่ผ่าน", "ผ่าน"], default: "waiting"},
             score: { type: Number, default: 0 },
             activeStatus: { type: Number, enum: [0, 1, 2], default: 0 }, 
         },
         CSB02: {
             activeStatus: { type: Number, enum: [0, 1, 2, 3], default: 0 }, 
-            status: {type: String, enum: ["waiting", "failed","approved","passed"], default: "waiting"},
+            status: {type: String, enum: ["รอดำเนินการ", "ไม่ผ่าน","ผ่านการอนุมัติจากอาจารย์","ผ่าน"], default: "รอ"},
             score: { type: Number, default: 0 },
 
             date: { type: Date, default: Date.now }
         },
         CSB03: {
             activeStatus: { type: Number, enum: [0, 1, 2, 3], default: 0 },
-            status: {type: String, enum: ["waiting", "failed","approved", "passed"], default: "waiting"},
+            status: {type: String, enum: ["รอดำเนินการ", "ไม่ผ่าน","ผ่านการอนุมัติจากอาจารย์","ผ่าน"], default: "รอ"},
             date: { type: Date, default: Date.now }
         },
         CSB04: {
             activeStatus: { type: Number, enum: [0, 1, 2, 3], default: 0 },
-            status: {type: String, enum: ["waiting", "failed","approved", "passed"], default: "waiting"},
+            status: {type: String, enum:  ["รอดำเนินการ", "ไม่ผ่าน","ผ่านการอนุมัติจากอาจารย์","ผ่าน"], default: "รอ"},
             score: { type: Number, default: 0 },
             date: { type: Date, default: Date.now }
         }
