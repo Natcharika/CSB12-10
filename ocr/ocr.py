@@ -163,9 +163,9 @@ def check(file_path, student_id):
             major_credits >= 57 and
             passed_project_1):
             results = []
-            results.append(f"Pass: Student  has passed {total_credits} requirements.")
-            results.append(f"Pass: Student  has passed {major_credits} requirements.")
-            results.append(f"Pass: Student Special Project I has passed.")
+            results.append(f"Pass: Student  has ผ่าน {total_credits} requirements.")
+            results.append(f"Pass: Student  has ผ่าน {major_credits} requirements.")
+            results.append(f"Pass: Student Special Project I has ผ่าน.")
             if passed_project_2:
                 logging.info(f"Pass: Student  pass Special Project II")
                 results.append(f"Pass: Student  pass Special Project II")

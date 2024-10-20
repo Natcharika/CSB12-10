@@ -5,7 +5,6 @@ const teacherSchema = new mongoose.Schema({
     T_name: String,
     T_firstname_en: String,
     T_lastname_en: String,
-    T_password: String,
     T_email: String,
     T_account_type: String,
     T_status: Boolean,

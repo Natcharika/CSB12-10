@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const csb01Schema = new mongoose.Schema({
     projectId: String,
-    confirmScore: Number,
-    unconfirmScore : Number,
+    confirmScore:{ type: Number, min: 0, max: 100 },
+    unconfirmScore :  { type: Number, min: 0, max: 99 },
     referee: [{
         T_id: String,
         T_name: String,

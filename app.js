@@ -27,11 +27,12 @@ const csb01 = require("./model/csb01.model");
 const csb02 = require("./model/csb02.model");
 const csb03 = require("./model/csb03.model");
 const csb04 = require("./model/csb04.model");
+const superAdmin = require("./model/superAdmin.model");
+const whitelist = require("./model/whitelist.model");
+
 const anouncement = require("./model/anouncement.model");
 
-// const adminUser = ["kriangkraia", "chantimap"];
-const adminUser = ["nateep", "alisah", "kriangkraia", "chantimap"];
-// const adminUser = ["admin1", "admin2", "admin3", "admin4"];
+// const adminUser = ["nateep", "alisah", "kriangkraia", "chantimap"];
 
 const middlewareExtractJwt = (req, res, next) => {
   const token = req.header("Authorization").split(" ")[1];
@@ -41,12 +42,23 @@ const middlewareExtractJwt = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
-    console.log("decoded22", decoded);
 
     next();
   } catch (e) {
     console.error(e);
     res.status(500).send({ message: "Invalid Token" });
+  }
+};
+
+const verifyRoleSuperAdminAndAdmin = (req, res, next) => {
+  const { role } = req.user;
+  console.log("roles", role);
+  if (role === "superAdmin" || role === "admin") {
+    console.log("roles", role);
+
+    next();
+  } else {
+    return res.status(401).json({ message: "Unauthorized" });
   }
 };
 
@@ -116,206 +128,202 @@ app.post("/create-form", async (req, res) => {
 
 // Updated route to reflect changes
 
-// app.post("/create-room-management", async (req, res) => {
-//   try {
-//     const { roomExam, nameExam, dateExam, teachers, projects } = req.body; // Updated referees to teachers
-//     if (!teachers || !Array.isArray(teachers)) {
-//       return res
-//         .status(400)
-//         .json({ error: "Teachers must be a defined array" });
-//     }
-//     // Check if the room is already booked for the given date
-//     const existingRoom = await Room.findOne({
-//       roomExam: roomExam,
-//       dateExam: dateExam,
-//       "projects.start_in_time": { $in: projects.map((p) => p.start_in_time) },
-//     });
-//     if (existingRoom) {
-//       return res.status(400).json({
-//         error:
-//           "ห้องสอบนี้ได้ถูกจัดไว้แล้วในวันที่เลือก กรุณาเลือกวันอื่นหรือห้องสอบอื่น",
-//       });
-//     }
-
-//     await Room.create({
-//       roomExam,
-//       nameExam: nameExam,
-//       dateExam,
-//       teachers: teachers, // Updated referees to teachers
-//       projects,
-//     });
-
-//     for (const project of projects) {
-//       const { projectId } = project;
-//       var exam;
-//       if (nameExam == "สอบหัวข้อ") {
-//         exam = new csb01({
-//           projectId,
-//           confirmScore: 0,
-//           unconfirmScore: 0,
-//           referee: teachers.map(({ T_id, T_name, role }) => ({
-//             T_id,
-//             T_name,
-//             role,
-//             score: 0,
-//             comment: "",
-//             status: "waiting",
-//           })),
-//         });
-//       } else if (nameExam == "สอบก้าวหน้า") {
-//         exam = new csb02({
-//           projectId,
-//           confirmScore: 0,
-//           unconfirmScore: 0,
-//           logBookScore: 0,
-//           referee: teachers.map(({ T_id, T_name, role }) => ({
-//             T_id,
-//             T_name,
-//             role,
-//             score: 0,
-//             comment: "",
-//             status: "waiting",
-//           })),
-//         });
-//       } else if (nameExam == "สอบป้องกัน") {
-//         exam = new csb03({
-//           projectId,
-//           confirmScore: 0,
-//           unconfirmScore: 0,
-//           exhibitionScore: 0,
-//           referee: teachers.map(({ T_id, T_name, role }) => ({
-//             T_id,
-//             T_name,
-//             role,
-//             score: 0,
-//             comment: "",
-//             status: "waiting",
-//           })),
-//         });
-//       }
-//       console.log("project ", projectId, " exam ", exam);
-
-//       const result = await exam.save();
-//       if (!result) {
-//         return res.status(400).json({ error: "Error creating exam" });
-//       }
-//     }
-//     res.json({ message: "Room management and score updated successfully!" });
-//   } catch (error) {
-//     console.error("Error in creating room management:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
-//ของเก่าห้ามลบ
-
 app.post("/create-room-management", async (req, res) => {
   try {
-    const { projectId, roomExam, nameExam, dateExam, teachers, projects } =
-      req.body;
+    const { roomExam, nameExam, dateExam, teachers, projects } = req.body; // Updated referees to teachers
     if (!teachers || !Array.isArray(teachers)) {
       return res
         .status(400)
         .json({ error: "Teachers must be a defined array" });
     }
-
     // Check if the room is already booked for the given date
-    // const existingRoom = await Room.findOne({
-    //   roomExam: roomExam,
-    //   dateExam: dateExam,
-    //   "projects.start_in_time": { $in: projects.map((p) => p.start_in_time) },
-    // });
+    const existingRoom = await Room.findOne({
+      roomExam: roomExam,
+      dateExam: dateExam,
+      "projects.start_in_time": { $in: projects.map((p) => p.start_in_time) },
+    });
+    if (existingRoom) {
+      return res.status(400).json({
+        error:
+          "ห้องสอบนี้ได้ถูกจัดไว้แล้วในวันที่เลือก กรุณาเลือกวันอื่นหรือห้องสอบอื่น",
+      });
+    }
 
-    // if (existingRoom) {
-    //   return res.status(400).json({
-    //     error:
-    //       "ห้องสอบนี้ได้ถูกจัดไว้แล้วในวันที่เลือก กรุณาเลือกวันอื่นหรือห้องสอบอื่น",
-    //   });
-    // }
-
-    // Create Room Management Entry
     await Room.create({
       roomExam,
-      nameExam,
+      nameExam: nameExam,
       dateExam,
-      teachers,
+      teachers: teachers, // Updated referees to teachers
       projects,
     });
 
-    // Create exams for each project
     for (const project of projects) {
       const { projectId } = project;
-      let exam;
-      console.log(nameExam);
-
-      switch (nameExam) {
-        case "สอบหัวข้อ":
-          exam = new csb01({
-            projectId,
-            confirmScore: 0,
-            unconfirmScore: 0,
-            referee: teachers.map(({ T_id, T_name, role }) => ({
-              T_id,
-              T_name,
-              role,
-              score: 0,
-              comment: "",
-              status: "รอดำเนินการ",
-            })),
-          });
-          break;
-
-        case "สอบก้าวหน้า":
-          exam = new csb02({
-            projectId,
-            confirmScore: 0,
-            unconfirmScore: 0,
-            logBookScore: 0,
-            referee: teachers.map(({ T_id, T_name, role }) => ({
-              T_id,
-              T_name,
-              role,
-              score: 0,
-              comment: "",
-              status: "รอดำเนินการ",
-            })),
-          });
-          break;
-
-        case "สอบป้องกัน":
-          exam = new csb03({
-            projectId,
-            confirmScore: 0,
-            unconfirmScore: 0,
-            exhibitionScore: 0,
-            referee: teachers.map(({ T_id, T_name, role }) => ({
-              T_id,
-              T_name,
-              role,
-              score: 0,
-              comment: "",
-              status: "รอดำเนินการ",
-            })),
-          });
-          break;
-
-        default:
-          return res.status(400).json({ error: "Invalid exam type" });
+      var exam;
+      if (nameExam == "สอบหัวข้อ") {
+        exam = new csb01({
+          projectId,
+          confirmScore: 0,
+          unconfirmScore: 0,
+          referee: teachers.map(({ T_id, T_name, role }) => ({
+            T_id,
+            T_name,
+            role,
+            score: 0,
+            comment: "",
+            status: "รอดำเนินการ",
+          })),
+        });
+      } else if (nameExam == "สอบก้าวหน้า") {
+        exam = new csb02({
+          projectId,
+          confirmScore: 0,
+          unconfirmScore: 0,
+          logBookScore: 0,
+          referee: teachers.map(({ T_id, T_name, role }) => ({
+            T_id,
+            T_name,
+            role,
+            score: 0,
+            comment: "",
+            status: "รอดำเนินการ",
+          })),
+        });
+      } else if (nameExam == "สอบป้องกัน") {
+        exam = new csb03({
+          projectId,
+          confirmScore: 0,
+          unconfirmScore: 0,
+          exhibitionScore: 0,
+          referee: teachers.map(({ T_id, T_name, role }) => ({
+            T_id,
+            T_name,
+            role,
+            score: 0,
+            comment: "",
+            status: "รอดำเนินการ",
+          })),
+        });
       }
+      console.log("project ", projectId, " exam ", exam);
 
-      // Save each exam instance
       const result = await exam.save();
       if (!result) {
         return res.status(400).json({ error: "Error creating exam" });
       }
     }
-
     res.json({ message: "Room management and score updated successfully!" });
   } catch (error) {
     console.error("Error in creating room management:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+//ของเก่าห้ามลบ
+
+// app.post("/create-room-management", async (req, res) => {
+//   try {
+//     const { projectId, roomExam, nameExam, dateExam, teachers, projects } =
+//       req.body;
+//     if (!teachers || !Array.isArray(teachers)) {
+//       return res
+//         .status(400)
+//         .json({ error: "Teachers must be a defined array" });
+//     }
+//     const existingRoom = await Room.findOne({
+//       roomExam: roomExam,
+//       dateExam: dateExam,
+//       "projects.start_in_time": { $in: projects.map((p) => p.start_in_time) },
+//     });
+
+//     if (existingRoom) {
+//       return res
+//         .status(400)
+//         .json({ error: "ห้องสอบนี้มีอยู่แล้วในวันและเวลาที่กำหนด" });
+//     }
+
+//     // ถ้าไม่มีห้องสอบซ้ำ สร้างห้องใหม่
+//     const room = await Room.create({
+//       roomExam,
+//       nameExam: req.body.nameExam,
+//       dateExam,
+//       teachers: req.body.teachers,
+//       projects,
+//     });
+
+//     // Create exams for each project
+//     for (const project of projects) {
+//       const { projectId } = project;
+//       let exam;
+
+//       switch (nameExam) {
+//         case "สอบหัวข้อ":
+//           exam = new csb01({
+//             projectId,
+//             confirmScore: 0,
+//             unconfirmScore: 0,
+//             referee: teachers.map(({ T_id, T_name, role }) => ({
+//               T_id,
+//               T_name,
+//               role,
+//               score: 0,
+//               comment: "",
+//               status: "รอดำเนินการ",
+//             })),
+//           });
+//           break;
+
+//         case "สอบก้าวหน้า":
+//           exam = new csb02({
+//             projectId,
+//             confirmScore: 0,
+//             unconfirmScore: 0,
+//             logBookScore: 0,
+//             referee: teachers.map(({ T_id, T_name, role }) => ({
+//               T_id,
+//               T_name,
+//               role,
+//               score: 0,
+//               comment: "",
+//               status: "รอดำเนินการ",
+//             })),
+//           });
+//           break;
+
+//         case "สอบป้องกัน":
+//           exam = new csb04({
+//             projectId,
+//             confirmScore: 0,
+//             unconfirmScore: 0,
+//             exhibitionScore: 0,
+//             referee: teachers.map(({ T_id, T_name, role }) => ({
+//               T_id,
+//               T_name,
+//               role,
+//               score: 0,
+//               comment: "",
+//               status: "รอดำเนินการ",
+//             })),
+//           });
+//           break;
+
+//         default:
+//           return res.status(400).json({ error: "Invalid exam type" });
+//       }
+
+//       // Save each exam instance
+//       const result = await exam.save();
+//       if (!result) {
+//         return res.status(400).json({ error: "Error creating exam" });
+//       }
+//     }
+
+//     res.json({ message: "Room management and score updated successfully!" });
+//   } catch (error) {
+//     console.error("Error in creating room management:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
 // app.post("/create-room-management", async (req, res) => {
 //   try {
@@ -478,7 +486,7 @@ app.post("/student-csb01", async (req, res) => {
 //         projectId ,
 //       {
 //         "status.CSB01.activeStatus": activeStatus,
-//         "status.CSB01.status": "approved",
+//         "status.CSB01.status": "ผ่านการอนุมัติจากอาจารย์",
 //         "status.CSB01.date": new Date(),
 //       },
 //       { new: true }
@@ -488,84 +496,84 @@ app.post("/student-csb01", async (req, res) => {
 //       return res.status(404).send({ message: "Project not found" });
 //     }
 
-//     res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+//     res.status(200).send({ message: "Project ผ่านการอนุมัติจากอาจารย์ successfully!", data: updatedProject });
 //   } catch (error) {
 //     console.error(error);
 //     res.status(500).send({ message: "Server error, please try again." });
 //   }
 // });
 
-app.post("/approveCSB01", async (req, res) => {
-  const { projectId, activeStatus } = req.body.params; // Change this to req.body directly
+// app.post("/approveCSB01", async (req, res) => {
+//   const { projectId, activeStatus } = req.body.params; // Change this to req.body directly
 
-  // Check if projectId and activeStatus are provided
-  if (!projectId || activeStatus === undefined) {
-    return res
-      .status(400)
-      .send({ message: "projectId and activeStatus are required." });
-  }
+//   // Check if projectId and activeStatus are provided
+//   if (!projectId || activeStatus === undefined) {
+//     return res
+//       .status(400)
+//       .send({ message: "projectId and activeStatus are required." });
+//   }
 
-  try {
-    const updatedProject = await Project.findOneAndUpdate(
-      { _id: projectId }, // Ensure you're using an object for the query
-      {
-        "status.CSB01.activeStatus": activeStatus,
-        "status.CSB01.status": "ผ่านการอนุมัติจากอาจารย์",
-        "status.CSB01.date": new Date(),
-      },
-      { new: true }
-    );
+//   try {
+//     const updatedProject = await Project.findOneAndUpdate(
+//       { _id: projectId }, // Ensure you're using an object for the query
+//       {
+//         "status.CSB01.activeStatus": activeStatus,
+//         "status.CSB01.status": "ผ่านการอนุมัติจากอาจารย์",
+//         "status.CSB01.date": new Date(),
+//       },
+//       { new: true }
+//     );
 
-    if (!updatedProject) {
-      return res.status(404).send({ message: "Project not found" });
-    }
+//     if (!updatedProject) {
+//       return res.status(404).send({ message: "Project not found" });
+//     }
 
-    res.status(200).send({
-      message: "Project approved successfully!",
-      data: updatedProject,
-    });
-  } catch (error) {
-    console.error("Error approving project:", error); // More specific error logging
-    res.status(500).send({
-      message: "Server error, please try again.",
-      error: error.message,
-    });
-  }
-});
+//     res.status(200).send({
+//       message: "Project ผ่านการอนุมัติจากอาจารย์ successfully!",
+//       data: updatedProject,
+//     });
+//   } catch (error) {
+//     console.error("Error approving project:", error); // More specific error logging
+//     res.status(500).send({
+//       message: "Server error, please try again.",
+//       error: error.message,
+//     });
+//   }
+// });
 
-app.post("/rejectCSB01", async (req, res) => {
-  const { projectId, activeStatus } = req.body.params;
+// app.post("/rejectCSB01", async (req, res) => {
+//   const { projectId, activeStatus } = req.body.params;
 
-  if (!projectId || activeStatus === undefined) {
-    return res
-      .status(400)
-      .send({ message: "projectId and activeStatus are required." });
-  }
+//   if (!projectId || activeStatus === undefined) {
+//     return res
+//       .status(400)
+//       .send({ message: "projectId and activeStatus are required." });
+//   }
 
-  try {
-    const updatedProject = await Project.findOneAndUpdate(
-      { _id: projectId },
-      {
-        "status.CSB01.activeStatus": activeStatus,
-        "status.CSB01.status": "ไม่ผ่าน",
-        "status.CSB01.date": new Date(),
-      },
-      { new: true }
-    );
+//   try {
+//     const updatedProject = await Project.findOneAndUpdate(
+//       { _id: projectId },
+//       {
+//         "status.CSB01.activeStatus": activeStatus,
+//         "status.CSB01.status": "ไม่ผ่าน",
+//         "status.CSB01.date": new Date(),
+//       },
+//       { new: true }
+//     );
 
-    if (!updatedProject) {
-      return res.status(404).send({ message: "Project not found" });
-    }
+//     if (!updatedProject) {
+//       return res.status(404).send({ message: "Project not found" });
+//     }
 
-    res.status(200).send({
-      message: "Project rejected successfully!",
-      data: updatedProject,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Server error, please try again." });
-  }
-});
+//     res.status(200).send({
+//       message: "Project rejected successfully!",
+//       data: updatedProject,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).send({ message: "Server error, please try again." });
+//   }
+// });
 
 app.post("/score-csb01", async (req, res) => {
   const { projectId, unconfirmScore, comment, referee } = req.body.params;
@@ -630,7 +638,7 @@ app.get("/csb01", async (req, res) => {
 });
 
 app.post("/chair-csb01", async (req, res) => {
-  const { _id, unconfirmScore, confirmScore } = req.body.params;
+  const { _id, unconfirmScore, activeStatus } = req.body.params;
   // const { projectId, confirmScore, logBookScore } = req.body.params;
 
   try {
@@ -778,7 +786,7 @@ app.post("/student-csb02", async (req, res) => {
 //         projectId ,
 //       {
 //         "status.CSB02.activeStatus": activeStatus,
-//         "status.CSB02.status": "approved",
+//         "status.CSB02.status": "ผ่านการอนุมัติจากอาจารย์",
 //         "status.CSB02.date": new Date(),
 //       },
 //       { new: true }
@@ -788,7 +796,7 @@ app.post("/student-csb02", async (req, res) => {
 //       return res.status(404).send({ message: "Project not found" });
 //     }
 
-//     res.status(200).send({ message: "Project approved successfully!", data: updatedProject });
+//     res.status(200).send({ message: "Project ผ่านการอนุมัติจากอาจารย์ successfully!", data: updatedProject });
 //   } catch (error) {
 //     console.error(error);
 //     res.status(500).send({ message: "Server error, please try again." });
@@ -821,7 +829,7 @@ app.post("/approveCSB02", async (req, res) => {
     }
 
     res.status(200).send({
-      message: "Project approved successfully!",
+      message: "Project ผ่านการอนุมัติจากอาจารย์ successfully!",
       data: updatedProject,
     });
   } catch (error) {
@@ -870,6 +878,7 @@ app.post("/rejectCSB02", async (req, res) => {
 app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
   const { _id, score, comment, nameExam } = req.body.params;
   const { username } = req.user;
+  console.log("req.body", req.body);
 
   try {
     if (nameExam == "สอบหัวข้อ") {
@@ -892,7 +901,7 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
         return res.status(404).json({ message: "CSB01 not found" });
       }
 
-      // Check if all referees have a status other than "waiting"
+      // Check if all referees have a status other than "รอดำเนินการ"
       const allNotWaiting = existingCsb01.referee.every(
         (ref) => ref.status !== "รอดำเนินการ"
       );
@@ -903,7 +912,7 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
 
       let unconfirmScore = 0;
       if (approvedReferees.length > 0 && allNotWaiting) {
-        // Calculate unconfirmScore by summing the scores of approved referees and dividing by their count
+        // Calculate unconfirmScore by summing the scores of ผ่านการอนุมัติจากอาจารย์ referees and dividing by their count
         const totalScore = approvedReferees.reduce(
           (sum, ref) => sum + ref.score,
           0
@@ -955,7 +964,7 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
 
       let unconfirmScore = 0;
       if (approvedReferees.length > 0 && allNotWaiting) {
-        // Calculate unconfirmScore by summing the scores of approved referees and dividing by their count
+        // Calculate unconfirmScore by summing the scores of ผ่านการอนุมัติจากอาจารย์ referees and dividing by their count
         const totalScore = approvedReferees.reduce(
           (sum, ref) => sum + ref.score,
           0
@@ -978,7 +987,7 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
     }
 
     if (nameExam == "สอบป้องกัน") {
-      let existingCsb03 = await csb03.findOneAndUpdate(
+      let existingCsb04 = await csb04.findOneAndUpdate(
         {
           _id: _id, // The document ID to match
           "referee.T_id": username, // Find the specific referee with the matching T_id
@@ -993,21 +1002,21 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
         { new: true } // Return the updated document
       );
 
-      if (!existingCsb03) {
-        return res.status(404).json({ message: "CSB03 not found" });
+      if (!existingCsb04) {
+        return res.status(404).json({ message: "CSB04 not found" });
       }
 
-      const allNotWaiting = existingCsb03.referee.every(
+      const allNotWaiting = existingCsb04.referee.every(
         (ref) => ref.status !== "รอดำเนินการ"
       );
 
-      const approvedReferees = existingCsb03.referee.filter(
+      const approvedReferees = existingCsb04.referee.filter(
         (ref) => ref.status === "ผ่านการอนุมัติจากอาจารย์"
       );
 
       let unconfirmScore = 0;
       if (approvedReferees.length > 0 && allNotWaiting) {
-        // Calculate unconfirmScore by summing the scores of approved referees and dividing by their count
+        // Calculate unconfirmScore by summing the scores of ผ่านการอนุมัติจากอาจารย์ referees and dividing by their count
         const totalScore = approvedReferees.reduce(
           (sum, ref) => sum + ref.score,
           0
@@ -1015,7 +1024,7 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
         unconfirmScore = totalScore / approvedReferees.length;
 
         // Update the unconfirmScore field in the document
-        await csb02.findByIdAndUpdate(
+        await csb04.findByIdAndUpdate(
           _id,
           { $set: { unconfirmScore } },
           { new: true }
@@ -1023,8 +1032,8 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
       }
 
       return res.json({
-        message: "CSB03 score updated successfully",
-        project: existingCsb03,
+        message: "CSB04 score updated successfully",
+        project: existingCsb04,
         unconfirmScore,
       });
     }
@@ -1032,7 +1041,7 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
     console.error(error);
     res
       .status(500)
-      .json({ message: "Error updating CSB02", error: error.message });
+      .json({ message: "Error updating score", error: error.message });
   }
 });
 
@@ -1199,7 +1208,7 @@ app.post("/approveCSB03", async (req, res) => {
     }
 
     res.status(200).send({
-      message: "Project approved successfully!",
+      message: "Project ผ่านการอนุมัติจากอาจารย์ successfully!",
       data: updatedProject,
     });
   } catch (error) {
@@ -1292,7 +1301,7 @@ app.post("/approveCSB04", async (req, res) => {
     }
 
     res.status(200).send({
-      message: "Project approved successfully!",
+      message: "Project ผ่านการอนุมัติจากอาจารย์ successfully!",
       data: updatedProject,
     });
   } catch (error) {
@@ -1567,7 +1576,7 @@ app.post(
       if (examName == "สอบหัวข้อ") {
         const rooms = await Room.find({ nameExam: examName });
         for (const room of rooms) {
-          //find by username but only status is waiting
+          //find by username but only status is รอดำเนินการ
 
           const csb01data = await csb01.find({
             "referee.T_id": username,
@@ -1634,12 +1643,12 @@ app.post(
       } else if (examName == "สอบป้องกัน") {
         const rooms = await Room.find({ nameExam: examName });
         for (const room of rooms) {
-          const csb03data = await csb03.find({
+          const csb04data = await csb04.find({
             "referee.T_id": username,
             "referee.status": "รอดำเนินการ",
           });
           var dataWithProjectName = [];
-          for (const data of csb03data) {
+          for (const data of csb04data) {
             const Data = await Project.findById(data.projectId);
             if (
               room.projects &&
@@ -1753,7 +1762,12 @@ app.get("/auth/login", async (req, res) => {
 
     const role = decoded.role;
 
-    if (role !== "student" && role !== "teacher" && role !== "admin") {
+    if (
+      role !== "student" &&
+      role !== "teacher" &&
+      role !== "admin" &&
+      role !== "superAdmin"
+    ) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -1783,7 +1797,22 @@ app.post("/auth/login", async (req, res) => {
   // trim username
 
   username = username.trim();
+  console.log("Username", username, "Password", password);
+
   try {
+    const SuperAdmin = await superAdmin.findOne({
+      sA_id: username,
+      sA_password: password,
+    });
+    if (SuperAdmin) {
+      const jwtToken = jwt.sign(
+        { username, role: "superAdmin" },
+        process.env.JWT_SECRET
+      );
+      console.log("Role:", "superAdmin");
+      return res.json({ username, role: "superAdmin", jwtToken });
+    }
+
     const formData = new FormData();
     formData.append("username", username);
     formData.append("password", password);
@@ -1803,6 +1832,7 @@ app.post("/auth/login", async (req, res) => {
       formData,
       headersConfig
     );
+    console.log("Response:", response.data);
 
     if (response.data.api_status == "success") {
       const role = response.data.userInfo.account_type;
@@ -1835,7 +1865,17 @@ app.post("/auth/login", async (req, res) => {
       }
 
       if (role === "personel") {
-        if (adminUser.includes(username)) {
+        const userInWhiteList = await whitelist.findOne({
+          username: response.data.userInfo.username,
+        });
+
+        if (!userInWhiteList) {
+          return res.status(403).json({ message: "User not in whitelist" });
+        }
+
+        const { role } = userInWhiteList;
+
+        if (role === "admin") {
           //find admin by username in student if not exist create one
 
           const admin = await Admin.findOne({ A_id: username });
@@ -1884,6 +1924,8 @@ app.post("/auth/login", async (req, res) => {
 
       return res.status(403).json({ message: "Forbidden" });
     }
+
+    return res.status(401).json({ message: "Unauthorized" });
   } catch (error) {
     console.error("Error in login:", error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -2005,10 +2047,10 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
 });
 
 // app.patch("/files/:fi_id", async (req, res) => {
-//   const { fi_id } = req.params;
+//   const { fi_id,fi_status } = req.body.params;
 
 //   try {
-//     const result = await file.findOneAndUpdate({ fi_id }, { new: true });
+//     const result = await file.findOneAndUpdate({ fi_id,fi_status }, { new: true });
 
 //     if (!result) {
 //       return res.status(404).json({ message: "File not found." });
@@ -2025,10 +2067,14 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
 
 app.patch("/files/:fi_id", async (req, res) => {
   const { fi_id } = req.params;
-  const { fi_status } = req.body.params; // Extracting fi_status from the request body
+  const { fi_status } = req.body;
 
   try {
-    const result = await file.findOneAndUpdate({ fi_id }, { fi_status }, { new: true });
+    const result = await file.findOneAndUpdate(
+      { _id: fi_id },
+      { fi_status },
+      { new: true }
+    );
 
     if (!result) {
       return res.status(404).json({ message: "File not found." });
@@ -2042,16 +2088,96 @@ app.patch("/files/:fi_id", async (req, res) => {
 });
 
 
+// app.patch("/files/:fi_id", async (req, res) => {
+//   const { fi_id } = req.params;
+//   const { fi_status } = req.body; // Extracting fi_status from the request body
 
-app.get("/files", async (req, res) => {
-  try {
-    const files = await file.find();
-    res.json({ body: files });
-  } catch (error) {
-    console.error("Error fetching files:", error);
-    res.status(500).json({ message: "Server error" });
+//   try {
+//     const result = await file.findOneAndUpdate(
+//       { fi_id },
+//       { fi_status },
+//       { new: true }
+//     );
+
+//     if (!result) {
+//       return res.status(404).json({ message: "File not found." });
+//     }
+
+//     res
+//       .status(200)
+//       .json({ message: "File status updated successfully.", result });
+//   } catch (error) {
+//     console.error("Error updating file status:", error);
+//     res.status(500).json({ message: "Error updating file status." });
+//   }
+// });
+
+
+
+app.get(
+  "/files",
+  middlewareExtractJwt,
+  verifyRoleSuperAdminAndAdmin,
+  async (req, res) => {
+    try {
+      const files = await file.find({
+        fi_status: "ยังไม่ได้ตรวจสอบ",
+      });
+      // Manually find and add the corresponding student name
+      const modifiedFiles = await Promise.all(
+        files.map(async (file) => {
+          const studentId = `s${file.fi_id}`; // Add the 's' prefix to match the S_id format
+          const student = await Students.findOne({ S_id: studentId });
+
+          // Transform the fi_file field
+          const transformedFiles = file.fi_file.map((filePath) => {
+            console.log("File path:", filePath);
+
+            const segments = filePath.split("\\");
+            const fileName = segments[segments.length - 1];
+            const linkFile = segments[segments.length - 2] + "/" + fileName;
+            return {
+              linkFile: linkFile,
+              fileName: fileName,
+            };
+          });
+
+          // Return the modified file document
+          return {
+            ...file._doc, // Spread the original file document properties
+            fi_file: transformedFiles,
+            studentName: student ? student.S_name : null, // Add the student name if found
+          };
+        })
+      );
+
+      // Send the modified response
+      res.json({ body: modifiedFiles });
+    } catch (error) {
+      console.error("Error fetching files:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
+);
+
+app.get("/view/:filepath/:filename", (req, res) => {
+  // Get the file path from the request parameters
+  const { filepath, filename } = req.params;
+
+  // Construct the absolute path to the PDF file
+  const pdfPath = path.join(__dirname, "ocr/upload", filepath, filename);
+
+  // Send the PDF file to the client
+  res.sendFile(pdfPath, (err) => {
+    if (err) {
+      console.error("Error sending the file:", err);
+      res.status(404).send("PDF file not found");
+    }
+  });
 });
+
+
+
 
 // app.post("/files/:id", async (req, res) => {
 //   try {
@@ -2067,23 +2193,21 @@ app.get("/files", async (req, res) => {
 //   }
 // });
 
-
-
-
 //anouncement
-
-
 
 app.get("/anouncements", async (req, res) => {
   try {
-    const anouncements = await anouncement.find(); // or whatever your query is
-    console.log("Fetched announcements:", anouncements);
-    res.json({ data: { body: anouncements } }); // Ensure it follows the expected structure
+      const announcements = await Anouncement.find(); // Replace Anouncement with your model
+      if (announcements.length === 0) {
+          return res.status(404).json({ message: "No announcements found." });
+      }
+      res.status(200).json({ body: announcements });
   } catch (error) {
-    console.error("Error fetching announcements:", error);
-    res.status(500).json({ message: "Error fetching announcements" });
+      console.error("Error fetching announcements:", error);
+      res.status(500).json({ message: "Failed to fetch announcements." });
   }
 });
+
 
 app.post("/anouncements", async (req, res) => {
   const { Exam_o_CSB01, Exam_o_CSB02, Exam_o_CSB03, Exam_o_CSB04 } = req.body;
@@ -2209,7 +2333,7 @@ app.post("/get-chairman-project", middlewareExtractJwt, async (req, res) => {
       res.json({ data: result });
     } else if (nameExam === "สอบป้องกัน") {
       let result = [];
-      let csb03Record = await csb03.find({
+      let csb04Record = await csb04.find({
         referee: {
           $elemMatch: {
             T_id: username,
@@ -2220,12 +2344,12 @@ app.post("/get-chairman-project", middlewareExtractJwt, async (req, res) => {
       });
 
       // Check if a record was found
-      if (!csb03Record) {
+      if (!csb04Record) {
         return res
           .status(404)
           .json({ message: "User does not have the role of 'main' in csb03" });
       }
-      for (const data of csb03Record) {
+      for (const data of csb04Record) {
         const allNotWaiting = data.referee.every(
           (ref) => ref.status !== "รอดำเนินการ"
         );
@@ -2245,6 +2369,84 @@ app.post("/get-chairman-project", middlewareExtractJwt, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error fetching project data" });
+  }
+});
+
+app.post(
+  "/whitelist",
+  middlewareExtractJwt,
+  verifyRoleSuperAdminAndAdmin,
+  async (req, res) => {
+    const { username, role } = req.body;
+    const trimmedUsername = username.trim();
+    console.log("Username:", trimmedUsername, "Role:", role);
+    try {
+      const user = new whitelist({
+        username: trimmedUsername,
+        role,
+      });
+
+      await user.save();
+      res.json({ message: "User added to whitelist", data: user });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+);
+
+app.delete(
+  "/whitelist",
+  middlewareExtractJwt,
+  verifyRoleSuperAdminAndAdmin,
+  async (req, res) => {
+    const { username, role } = req.body;
+
+    try {
+      const user = await whitelist.findOneAndDelete({ username, role });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      return res.json({ message: "User removed from whitelist" });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+);
+app.get(
+  "/whitelist",
+  middlewareExtractJwt,
+  verifyRoleSuperAdminAndAdmin,
+  async (req, res) => {
+    try {
+      const users = await whitelist.find();
+
+      return res.json({ data: users });
+    } catch (error) {
+      console.error("error", error);
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+  }
+);
+
+app.post("/project-acceptance", middlewareExtractJwt, async (req, res) => {
+  const { examName } = req.body;
+  const { username } = req.user;
+  try {
+    const project = await Project.find({
+      "lecturer.T_id": username,
+      [`status.${examName}.activeStatus`]: 1,
+    })
+      .populate("student")
+      .populate("lecturer");
+
+    res.json({ body: project });
+  } catch (error) {
+    console.error("Error fetching project data:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
