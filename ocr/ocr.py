@@ -4,7 +4,7 @@ import pandas as pd
 from pdfminer.high_level import extract_text
 from pymongo import MongoClient
 import logging
-
+from datetime import datetime
 # ตั้งค่า logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -49,13 +49,26 @@ def get_files_from_mongodb(student_id):
         collection = db['files']
         file_docs = collection.find_one({'fi_id': student_id})
         if file_docs:
-            return file_docs.get('fi_file', [])
-        return []
+            return file_docs.get('fi_file', "")
+        return ""
     except Exception as e:
         logging.error(f"Error connecting to MongoDB: {e}")
-        return []
+        return ""
+
+def get_status_project_1(student_id):
+    try:
+        db = client['test']
+        collection = db['files']
+        file_docs = collection.find_one({'fi_id': student_id})
+        if file_docs:
+            fi_result = file_docs.get('fi_result', {})
+            return fi_result.get('status', "ยังไม่ได้ตรวจสอบ")
+        return "ยังไม่ได้ตรวจสอบ"
+    except Exception as e:
+        logging.error(f"Error connecting to MongoDB: {e}")
+        return "ยังไม่ได้ตรวจสอบ"
     
-def update_results_in_mongodb(student_id,  result):
+def update_results_in_mongodb(student_id, result, projectState):
     try:
         db = client['test']
         collection = db['files']
@@ -63,7 +76,7 @@ def update_results_in_mongodb(student_id,  result):
         # ทำการอัปเดทและรอผลลัพธ์
         update_result = collection.update_one(
             {'fi_id': student_id},  # ใช้ fi_file ในการ match ด้วย
-            {'$set': {'fi_result': result}},
+            {'$set': {f'fi_result.{projectState}': result}},
             upsert=True  # สร้างเอกสารใหม่ถ้ายังไม่มี
         )
         
@@ -156,40 +169,68 @@ def check(file_path, student_id):
         Credit Check Results:
         Total credits: {total_credits} (required: 102)
         Major credits: {major_credits} (required: 46)
-        """)  
-        
+        """)
+
+        isPassedProject1 = get_status_project_1(student_id)
+        if isPassedProject1 == "ยังไม่ได้ตรวจสอบ":
+            results = {
+                "submit_date": datetime.now().isoformat() + "Z",
+                "total_credits": {
+                    "score": total_credits,
+                    "passed": True if total_credits >= 102 else False
+                },
+                "major_credits": {
+                    "score": major_credits,
+                    "passed": True if major_credits >= 57 else False
+                },
+                "passed_project_1": passed_project_1,
+                "status": "ยังไม่ได้ตรวจสอบ"
+            }
+            update_results_in_mongodb(student_id,results, "project_1")
+
+
+        elif isPassedProject1 == "ผ่าน":
+            results = {
+                "submit_date": datetime.now().isoformat() + "Z",
+                "passed_project_2": passed_project_2,
+                "status": "ยังไม่ได้ตรวจสอบ"
+            }
+            update_results_in_mongodb(student_id,results, "project_2")
+
+        else :
+            return
         # ตรวจสอบเงื่อนไขสุดท้าย
-        if (total_credits >= 102 and 
-            major_credits >= 57 and
-            passed_project_1):
-            results = []
-            results.append(f"Pass: Student  has ผ่าน {total_credits} requirements.")
-            results.append(f"Pass: Student  has ผ่าน {major_credits} requirements.")
-            results.append(f"Pass: Student Special Project I has ผ่าน.")
-            if passed_project_2:
-                logging.info(f"Pass: Student  pass Special Project II")
-                results.append(f"Pass: Student  pass Special Project II")
-            else:
-                logging.info(f"Pass: Student  pass Special Project II")
-                results.append(f"Fail: Student not pass Special Project II")
-            result = ";\n".join(results)
 
-            return print(update_results_in_mongodb(student_id,result))
+        # if (total_credits >= 102 and 
+        #     major_credits >= 57 and
+        #     passed_project_1):
+            
+        #     results.append(f"Pass: Student  has ผ่าน {total_credits} requirements.")
+        #     results.append(f"Pass: Student  has ผ่าน {major_credits} requirements.")
+        #     results.append(f"Pass: Student Special Project I has ผ่าน.")
+        #     if passed_project_2:
+        #         logging.info(f"Pass: Student  pass Special Project II")
+        #         results.append(f"Pass: Student  pass Special Project II")
+        #     else:
+        #         logging.info(f"Pass: Student  pass Special Project II")
+        #         results.append(f"Fail: Student not pass Special Project II")
+        #     result = ";\n".join(results)
 
-        else:
-            results = []
-            if total_credits < 102:
-                logging.info(f"Fail: Insufficient total credits (has {total_credits}, needs 102).")
-                results.append(f"Fail: Insufficient total credits (has {total_credits}, needs 102).")
-            if major_credits < 57:
-                logging.info(f"Fail: Insufficient major credits (has {major_credits}, needs 57).")
-                results.append(f"Fail: Insufficient major credits (has {major_credits}, needs 57).")
-            if not passed_project_1:
-                logging.info(f"Fail: Student not pass Special Project I")
-                results.append(f"Fail: Student not pass Special Project I")
+        #     return print(update_results_in_mongodb(student_id,result))
 
-        result = ";\n".join(results)
-        return print(update_results_in_mongodb(student_id,result))
+        # else:
+        #     results = []
+        #     if total_credits < 102:
+        #         logging.info(f"Fail: Insufficient total credits (has {total_credits}, needs 102).")
+        #         results.append(f"Fail: Insufficient total credits (has {total_credits}, needs 102).")
+        #     if major_credits < 57:
+        #         logging.info(f"Fail: Insufficient major credits (has {major_credits}, needs 57).")
+        #         results.append(f"Fail: Insufficient major credits (has {major_credits}, needs 57).")
+        #     if not passed_project_1:
+        #         logging.info(f"Fail: Student not pass Special Project I")
+        #         results.append(f"Fail: Student not pass Special Project I")
+
+        # result = ";\n".join(results)
 
     except Exception as e:
         logging.error(f"Error processing PDF: {e}")
@@ -200,16 +241,14 @@ def main():
         sys.exit(1)
 
     student_id = sys.argv[1]
-    files = get_files_from_mongodb(student_id)
-    # print(student_id)
+    file_path = get_files_from_mongodb(student_id)
 
-    if not files:
+    if file_path == "":
         print(f"No files found for student ID: {student_id}")
         sys.exit(1)
 
-    for file_path in files:
-        if file_path and isinstance(file_path, str) and file_path.endswith('.pdf'):
-            check(file_path, student_id)
+    if file_path and isinstance(file_path, str) and file_path.endswith('.pdf'):
+        check(file_path, student_id)
 
 if __name__ == "__main__":
     main()

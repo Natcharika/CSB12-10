@@ -190,7 +190,7 @@ app.post("/create-room-management", async (req, res) => {
           })),
         });
       } else if (nameExam == "สอบป้องกัน") {
-        exam = new csb03({
+        exam = new csb04({
           projectId,
           confirmScore: 0,
           unconfirmScore: 0,
@@ -2018,19 +2018,40 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
     let document = await file.findOne({ fi_id: studentId });
 
     if (!document) {
-      await file.create({
+      newOcr = new file({
         fi_id: studentId,
-        fi_file: listfile,
-        fi_result: "",
-        fi_status: "ยังไม่ได้ตรวจสอบ",
+        fi_file: path.join(
+          directoryPath,
+          req.files.find((file) => file.fieldname === "transcriptFile")
+            .originalname
+        ),
+        fi_english_test: path.join(
+          directoryPath,
+          req.files.find((file) => file.fieldname === "englishScoreFile")
+            .originalname
+        ),
       });
+      let savedOcr = await newOcr.save();
+      if (!savedOcr) {
+        return res.status(500).json({ message: "Error saving file." });
+      }
     } else {
-      document.fi_file = listfile;
-      document.fi_status = "ยังไม่ได้ตรวจสอบ";
+      document.fi_file = path.join(
+        directoryPath,
+        req.files.find((file) => file.fieldname === "transcriptFile")
+          .originalname
+      );
+      document.fi_english_test = path.join(
+        directoryPath,
+        req.files.find((file) => file.fieldname === "englishScoreFile")
+          .originalname
+      );
       await document.save();
     }
 
     // Execute Python script to check files
+    console.log("Student:", studentId);
+
     exec(`python ./ocr/ocr.py ${studentId}`, async (error, stdout, stderr) => {
       if (error) {
         console.error(`Error executing Python script: ${error.message}`);
@@ -2065,14 +2086,17 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
 //   }
 // });
 
-app.patch("/files/:fi_id", async (req, res) => {
-  const { fi_id } = req.params;
-  const { fi_status } = req.body;
+app.patch("/files", async (req, res) => {
+  const { status, _id, projectState } = req.body.params;
+
+  if (!status || !_id || !projectState) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
 
   try {
-    const result = await file.findOneAndUpdate(
-      { _id: fi_id },
-      { fi_status },
+    const result = await file.findByIdAndUpdate(
+      _id,
+      { [`${projectState}.status`]: status },
       { new: true }
     );
 
@@ -2080,13 +2104,14 @@ app.patch("/files/:fi_id", async (req, res) => {
       return res.status(404).json({ message: "File not found." });
     }
 
-    res.status(200).json({ message: "File status updated successfully.", result });
+    res
+      .status(200)
+      .json({ message: "File status updated successfully.", result });
   } catch (error) {
     console.error("Error updating file status:", error);
     res.status(500).json({ message: "Error updating file status." });
   }
 });
-
 
 // app.patch("/files/:fi_id", async (req, res) => {
 //   const { fi_id } = req.params;
@@ -2112,8 +2137,6 @@ app.patch("/files/:fi_id", async (req, res) => {
 //   }
 // });
 
-
-
 app.get(
   "/files",
   middlewareExtractJwt,
@@ -2121,8 +2144,12 @@ app.get(
   async (req, res) => {
     try {
       const files = await file.find({
-        fi_status: "ยังไม่ได้ตรวจสอบ",
+        $or: [
+          { "fi_result.project_1.status": "ยังไม่ได้ตรวจสอบ" },
+          { "fi_result.project_2.status": "ยังไม่ได้ตรวจสอบ" },
+        ],
       });
+
       // Manually find and add the corresponding student name
       const modifiedFiles = await Promise.all(
         files.map(async (file) => {
@@ -2130,22 +2157,37 @@ app.get(
           const student = await Students.findOne({ S_id: studentId });
 
           // Transform the fi_file field
-          const transformedFiles = file.fi_file.map((filePath) => {
-            console.log("File path:", filePath);
+          let listFile = [];
+          let segmentsTranscriptFile = file.fi_file.split("\\");
+          let fileNameTranscriptFile =
+            segmentsTranscriptFile[segmentsTranscriptFile.length - 1];
+          let linkFileTranscriptFile =
+            segmentsTranscriptFile[segmentsTranscriptFile.length - 2] +
+            "/" +
+            fileNameTranscriptFile;
+          const transcriptFile = {
+            linkFile: linkFileTranscriptFile,
+            fileName: fileNameTranscriptFile,
+          };
+          listFile.push(transcriptFile);
 
-            const segments = filePath.split("\\");
-            const fileName = segments[segments.length - 1];
-            const linkFile = segments[segments.length - 2] + "/" + fileName;
-            return {
-              linkFile: linkFile,
-              fileName: fileName,
-            };
-          });
+          let segmentsEnglishScoreFile = file.fi_file.split("\\");
+          let fileNameEnglishScoreFile =
+            segmentsEnglishScoreFile[segmentsEnglishScoreFile.length - 1];
+          let linkFileEnglishScoreFile =
+            segmentsEnglishScoreFile[segmentsEnglishScoreFile.length - 2] +
+            "/" +
+            fileNameEnglishScoreFile;
+          const englishScoreFile = {
+            linkFile: linkFileEnglishScoreFile,
+            fileName: fileNameEnglishScoreFile,
+          };
+          listFile.push(englishScoreFile);
 
           // Return the modified file document
           return {
             ...file._doc, // Spread the original file document properties
-            fi_file: transformedFiles,
+            fi_file: listFile,
             studentName: student ? student.S_name : null, // Add the student name if found
           };
         })
@@ -2176,9 +2218,6 @@ app.get("/view/:filepath/:filename", (req, res) => {
   });
 });
 
-
-
-
 // app.post("/files/:id", async (req, res) => {
 //   try {
 //     const { fi_status } = req.body;
@@ -2197,17 +2236,16 @@ app.get("/view/:filepath/:filename", (req, res) => {
 
 app.get("/anouncements", async (req, res) => {
   try {
-      const announcements = await Anouncement.find(); // Replace Anouncement with your model
-      if (announcements.length === 0) {
-          return res.status(404).json({ message: "No announcements found." });
-      }
-      res.status(200).json({ body: announcements });
+    const announcements = await Anouncement.find(); // Replace Anouncement with your model
+    if (announcements.length === 0) {
+      return res.status(404).json({ message: "No announcements found." });
+    }
+    res.status(200).json({ body: announcements });
   } catch (error) {
-      console.error("Error fetching announcements:", error);
-      res.status(500).json({ message: "Failed to fetch announcements." });
+    console.error("Error fetching announcements:", error);
+    res.status(500).json({ message: "Failed to fetch announcements." });
   }
 });
-
 
 app.post("/anouncements", async (req, res) => {
   const { Exam_o_CSB01, Exam_o_CSB02, Exam_o_CSB03, Exam_o_CSB04 } = req.body;
@@ -2284,6 +2322,8 @@ app.post("/get-chairman-project", middlewareExtractJwt, async (req, res) => {
         const allNotWaiting = data.referee.every(
           (ref) => ref.status !== "รอดำเนินการ"
         );
+        console.log("Project_id:", data.projectId);
+
         const project = await Project.findById(data.projectId);
         if (allNotWaiting) {
           result.push({
@@ -2307,6 +2347,7 @@ app.post("/get-chairman-project", middlewareExtractJwt, async (req, res) => {
         },
         confirmScore: 0,
       });
+      console.log("CSB02 Record:", csb02Record);
 
       // Check if a record was found
       if (!csb02Record) {
