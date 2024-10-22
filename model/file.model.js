@@ -18,14 +18,14 @@ const PdfSchema2 = new mongoose.Schema({
       },
       passed_project_1: { type: Boolean, default: false },
       comment: String,
-      status: { type: String, default: "ยังไม่ได้ตรวจสอบ" },
+      status: { type: String, default: "รอส่งเอกสาร" },
     },
     project_2: {
       summit_date: Date,
       check_date: Date,
       passed_project_2: { type: Boolean, default: false },
       comment: String,
-      status: { type: String, default: "ยังไม่ได้ตรวจสอบ" },
+      status: { type: String, default: "รอส่งเอกสาร" },
     },
   },
 });

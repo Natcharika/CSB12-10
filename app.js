@@ -29,6 +29,7 @@ const csb03 = require("./model/csb03.model");
 const csb04 = require("./model/csb04.model");
 const superAdmin = require("./model/superAdmin.model");
 const whitelist = require("./model/whitelist.model");
+const ExamPeriod = require("./model/examPeriod.model");
 
 const anouncement = require("./model/anouncement.model");
 
@@ -87,24 +88,26 @@ app.get("/test", (req, res) => {
 
 app.post("/create-form", async (req, res) => {
   try {
+    console.log("Received body:", JSON.stringify(req.body));
     const {
       projectName,
       projectType,
       projectStatus,
       projectDescription,
       student,
+      status, // Accept activeStatus from the request body
     } = req.body.data; // Accessing properties inside 'data'
 
     // Validate required fields
     if (
       projectName === undefined ||
       projectType === undefined ||
-      projectStatus === undefined
+      projectStatus === undefined ||
+      status === undefined // Ensure activeStatus is also provided
     ) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    console.log("Received body:", req.body); // Log the entire bodys
     // Create a new project
     const projects = new Project({
       projectName,
@@ -112,19 +115,57 @@ app.post("/create-form", async (req, res) => {
       projectStatus,
       projectDescription,
       student,
+      status: { CSB01: { activeStatus: 1 } },
     });
 
     const savedData = await projects.save();
-    console.log("Saved project:", savedData); // Log the saved project
-
-    // await Project.findByIdAndUpdate(projects._id);
-
     res.json({ body: { project: savedData } });
   } catch (error) {
-    console.error("Error creating project and score:", error);
+    console.error("Error creating project:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+// app.post("/create-form", async (req, res) => {
+//   try {
+//     const {
+//       projectName,
+//       projectType,
+//       projectStatus,
+//       projectDescription,
+//       student,
+//     } = req.body.data; // Accessing properties inside 'data'
+
+//     // Validate required fields
+//     if (
+//       projectName === undefined ||
+//       projectType === undefined ||
+//       projectStatus === undefined
+//     ) {
+//       return res.status(400).json({ message: "Missing required fields" });
+//     }
+
+//     console.log("Received body:", req.body); // Log the entire bodys
+//     // Create a new project
+//     const projects = new Project({
+//       projectName,
+//       projectType,
+//       projectStatus,
+//       projectDescription,
+//       student,
+//     });
+
+//     const savedData = await projects.save();
+//     console.log("Saved project:", savedData); // Log the saved project
+
+//     // await Project.findByIdAndUpdate(projects._id);
+
+//     res.json({ body: { project: savedData } });
+//   } catch (error) {
+//     console.error("Error creating project and score:", error);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// });
 
 // Updated route to reflect changes
 
@@ -1045,6 +1086,53 @@ app.post("/score-csb", middlewareExtractJwt, async (req, res) => {
   }
 });
 
+app.post("/reject-score", middlewareExtractJwt, async (req, res) => {
+  const { _id, nameExam } = req.body.params;
+  const { username } = req.user;
+
+  try {
+    const collectionMapper = {
+      สอบหัวข้อ: csb01,
+      สอบก้าวหน้า: csb02,
+      สอบป้องกัน: csb04,
+    };
+
+    const collection = collectionMapper[nameExam];
+    if (!collection) {
+      return res.status(400).json({ message: "Invalid exam type" });
+    }
+
+    const existingExam = await collection.findOneAndUpdate(
+      {
+        _id,
+        "referee.T_id": username,
+      },
+      {
+        $set: {
+          "referee.$.score": 0,
+          "referee.$.comment": "",
+          "referee.$.status": "ไม่ประเมิน",
+        },
+      },
+      { new: true }
+    );
+
+    if (!existingExam) {
+      return res.status(404).json({ message: "Exam not found" });
+    }
+
+    return res.json({
+      message: "Score rejected successfully",
+      project: existingExam,
+    });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Error rejecting score", error: error.message });
+  }
+});
+
 //chaircsb02
 app.get("/csb02", async (req, res) => {
   let Csb02 = await csb02.find();
@@ -1344,56 +1432,56 @@ app.post("/rejectCSB04", async (req, res) => {
   }
 });
 
-app.post("/score-csb04", async (req, res) => {
-  const { projectId, unconfirmScore, comment, referee } = req.body.params;
+// app.post("/score-csb04", async (req, res) => {
+//   const { projectId, unconfirmScore, comment, referee } = req.body.params;
 
-  try {
-    let existingCsb04 = await csb04.findOne({ projectId });
+//   try {
+//     let existingCsb04 = await csb04.findOne({ projectId });
 
-    if (existingCsb04) {
-      existingCsb04.unconfirmScore = unconfirmScore;
-      existingCsb04.referee = referee || [];
-      existingCsb04.comment = comment || "";
-      const updatedCsb04 = await existingCsb04.save();
+//     if (existingCsb04) {
+//       existingCsb04.unconfirmScore = unconfirmScore;
+//       existingCsb04.referee = referee || [];
+//       existingCsb04.comment = comment || "";
+//       const updatedCsb04 = await existingCsb04.save();
 
-      res.json({
-        message: "CSB04 score updated successfully",
-        project: {
-          _id: updatedCsb04._id,
-          projectId: updatedCsb04.projectId,
-          unconfirmScore: updatedCsb04.unconfirmScore,
-          comment: updatedCsb04.comment,
-          referee: updatedCsb04.referee,
-        },
-      });
-    } else {
-      const newCsb04 = new csb04({
-        projectId,
-        unconfirmScore,
-        referee,
-        comment,
-      });
+//       res.json({
+//         message: "CSB04 score updated successfully",
+//         project: {
+//           _id: updatedCsb04._id,
+//           projectId: updatedCsb04.projectId,
+//           unconfirmScore: updatedCsb04.unconfirmScore,
+//           comment: updatedCsb04.comment,
+//           referee: updatedCsb04.referee,
+//         },
+//       });
+//     } else {
+//       const newCsb04 = new csb04({
+//         projectId,
+//         unconfirmScore,
+//         referee,
+//         comment,
+//       });
 
-      const savedCsb04 = await newCsb04.save();
+//       const savedCsb04 = await newCsb04.save();
 
-      res.json({
-        message: "CSB04 score saved successfully",
-        project: {
-          _id: savedCsb04._id,
-          projectId: savedCsb04.projectId,
-          unconfirmScore: savedCsb04.unconfirmScore,
-          comment: savedCsb04.comment,
-          referee: savedCsb04.referee,
-        },
-      });
-    }
-  } catch (error) {
-    console.error(error);
-    res
-      .status(500)
-      .json({ message: "Error updating CSB04", error: error.message });
-  }
-});
+//       res.json({
+//         message: "CSB04 score saved successfully",
+//         project: {
+//           _id: savedCsb04._id,
+//           projectId: savedCsb04.projectId,
+//           unconfirmScore: savedCsb04.unconfirmScore,
+//           comment: savedCsb04.comment,
+//           referee: savedCsb04.referee,
+//         },
+//       });
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     res
+//       .status(500)
+//       .json({ message: "Error updating CSB04", error: error.message });
+//   }
+// });
 
 app.get("/csb04", async (req, res) => {
   let Csb04 = await csb04.find();
@@ -1573,106 +1661,121 @@ app.post(
         body: [],
       };
 
-      if (examName == "สอบหัวข้อ") {
-        const rooms = await Room.find({ nameExam: examName });
-        for (const room of rooms) {
-          //find by username but only status is รอดำเนินการ
+      const collectionMapper = {
+        สอบหัวข้อ: csb01,
+        สอบก้าวหน้า: csb02,
+        สอบป้องกัน: csb04,
+      };
 
-          const csb01data = await csb01.find({
-            "referee.T_id": username,
-            "referee.status": "รอดำเนินการ",
-          });
-          console.log("CSB01 Data:", csb01data);
+      const collection = collectionMapper[examName];
+      if (!collection) {
+        return res.status(400).json({ message: "Invalid exam type" });
+      }
 
-          var dataWithProjectName = [];
-          for (const data of csb01data) {
-            const Data = await Project.findById(data.projectId);
-            if (
-              room.projects &&
-              room.projects.some(
-                (project) => project.projectId === data.projectId
-              ) &&
-              room.teachers.some((ref) => ref.T_id === username)
-            ) {
-              dataWithProjectName.push({
-                projectName: Data.projectName,
-                ...data._doc,
-              });
-            }
-          }
-          const result = {
-            dateExam: room.dateExam,
-            projects: dataWithProjectName,
-          };
+      const rooms = await Room.find({ nameExam: examName });
+      for (const room of rooms) {
+        //find by username but only status is รอดำเนินการ
 
-          if (dataWithProjectName.length > 0) {
-            resultData.body.push(result);
+        const csbData = await collection.find({
+          referee: {
+            $elemMatch: {
+              T_id: username,
+              status: "รอดำเนินการ",
+            },
+          },
+        });
+
+        var dataWithProjectName = [];
+        for (const data of csbData) {
+          const Data = await Project.findById(data.projectId);
+          if (
+            room.projects &&
+            room.projects.some(
+              (project) => project.projectId === data.projectId
+            ) &&
+            room.teachers.some((ref) => ref.T_id === username)
+          ) {
+            dataWithProjectName.push({
+              projectName: Data.projectName,
+              ...data._doc,
+            });
           }
         }
-      } else if (examName == "สอบก้าวหน้า") {
-        const rooms = await Room.find({ nameExam: examName });
-        for (const room of rooms) {
-          const csb02data = await csb02.find({
-            "referee.T_id": username,
-            "referee.status": "รอดำเนินการ",
-          });
-          var dataWithProjectName = [];
-          for (const data of csb02data) {
-            const Data = await Project.findById(data.projectId);
-            if (
-              room.projects &&
-              room.projects.some(
-                (project) => project.projectId === data.projectId
-              ) &&
-              room.teachers.some((ref) => ref.T_id === username)
-            ) {
-              dataWithProjectName.push({
-                projectName: Data.projectName,
-                ...data._doc,
-              });
-            }
-          }
-          const result = {
-            dateExam: room.dateExam,
-            projects: dataWithProjectName,
-          };
-          if (dataWithProjectName.length > 0) {
-            resultData.body.push(result);
-          }
-        }
-      } else if (examName == "สอบป้องกัน") {
-        const rooms = await Room.find({ nameExam: examName });
-        for (const room of rooms) {
-          const csb04data = await csb04.find({
-            "referee.T_id": username,
-            "referee.status": "รอดำเนินการ",
-          });
-          var dataWithProjectName = [];
-          for (const data of csb04data) {
-            const Data = await Project.findById(data.projectId);
-            if (
-              room.projects &&
-              room.projects.some(
-                (project) => project.projectId === data.projectId
-              ) &&
-              room.teachers.some((ref) => ref.T_id === username)
-            ) {
-              dataWithProjectName.push({
-                projectName: Data.projectName,
-                ...data._doc,
-              });
-            }
-          }
-          const result = {
-            dateExam: room.dateExam,
-            projects: dataWithProjectName,
-          };
-          if (dataWithProjectName.length > 0) {
-            resultData.body.push(result);
-          }
+        const result = {
+          dateExam: room.dateExam,
+          projects: dataWithProjectName,
+        };
+
+        if (dataWithProjectName.length > 0) {
+          resultData.body.push(result);
         }
       }
+
       return res.json(resultData);
+      // else if (examName == "สอบก้าวหน้า") {
+      //   const rooms = await Room.find({ nameExam: examName });
+      //   for (const room of rooms) {
+      //     const csb02data = await csb02.find({
+      //       "referee.T_id": username,
+      //       "referee.status": "รอดำเนินการ",
+      //     });
+      //     var dataWithProjectName = [];
+      //     for (const data of csb02data) {
+      //       const Data = await Project.findById(data.projectId);
+      //       if (
+      //         room.projects &&
+      //         room.projects.some(
+      //           (project) => project.projectId === data.projectId
+      //         ) &&
+      //         room.teachers.some((ref) => ref.T_id === username)
+      //       ) {
+      //         dataWithProjectName.push({
+      //           projectName: Data.projectName,
+      //           ...data._doc,
+      //         });
+      //       }
+      //     }
+      //     const result = {
+      //       dateExam: room.dateExam,
+      //       projects: dataWithProjectName,
+      //     };
+      //     if (dataWithProjectName.length > 0) {
+      //       resultData.body.push(result);
+      //     }
+      //   }
+      // } else if (examName == "สอบป้องกัน") {
+      //   const rooms = await Room.find({ nameExam: examName });
+      //   for (const room of rooms) {
+      //     const csb04data = await csb04.find({
+      //       "referee.T_id": username,
+      //       "referee.status": "รอดำเนินการ",
+      //     });
+      //     var dataWithProjectName = [];
+      //     for (const data of csb04data) {
+      //       const Data = await Project.findById(data.projectId);
+      //       if (
+      //         room.projects &&
+      //         room.projects.some(
+      //           (project) => project.projectId === data.projectId
+      //         ) &&
+      //         room.teachers.some((ref) => ref.T_id === username)
+      //       ) {
+      //         dataWithProjectName.push({
+      //           projectName: Data.projectName,
+      //           ...data._doc,
+      //         });
+      //       }
+      //     }
+      //     const result = {
+      //       dateExam: room.dateExam,
+      //       projects: dataWithProjectName,
+      //     };
+      //     if (dataWithProjectName.length > 0) {
+      //       resultData.body.push(result);
+      //     }
+      //   }
+      // }
+      // return res.json(resultData);
     } catch (error) {
       console.error("Error in getting room summary:", error);
       return res.status(500).json({ message: "Internal Server Error" });
@@ -2030,6 +2133,7 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
           req.files.find((file) => file.fieldname === "englishScoreFile")
             .originalname
         ),
+        status: "ยังไม่ได้ตรวจสอบ",
       });
       let savedOcr = await newOcr.save();
       if (!savedOcr) {
@@ -2046,6 +2150,7 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
         req.files.find((file) => file.fieldname === "englishScoreFile")
           .originalname
       );
+      document.status = "ยังไม่ได้ตรวจสอบ";
       await document.save();
     }
 
@@ -2087,16 +2192,24 @@ app.post("/files", upload.any("transcriptFile"), async (req, res) => {
 // });
 
 app.patch("/files", async (req, res) => {
-  const { status, _id, projectState } = req.body.params;
+  const { status, _id, projectState, comment } = req.body.params;
 
-  if (!status || !_id || !projectState) {
+  if (!status || !_id) {
     return res.status(400).json({ message: "Missing required fields." });
+  }
+
+  if (projectState !== "project_1" && projectState !== "project_2") {
+    return res.status(400).json({ message: "Invalid project state." });
   }
 
   try {
     const result = await file.findByIdAndUpdate(
       _id,
-      { [`${projectState}.status`]: status },
+      {
+        [`fi_result.${projectState}.status`]: status,
+        [`fi_result.${projectState}.comment`]: comment,
+        [`fi_result.${projectState}.checkDate`]: new Date(),
+      },
       { new: true }
     );
 
@@ -2488,6 +2601,43 @@ app.post("/project-acceptance", middlewareExtractJwt, async (req, res) => {
   } catch (error) {
     console.error("Error fetching project data:", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+app.get("/exam-period", async (req, res) => {
+  try {
+    const examPeriod = await ExamPeriod.find();
+    if (examPeriod.length === 0) {
+      return res.status(404).json({ message: "No exam periods found." });
+    }
+    res.status(200).json({ body: examPeriod });
+  } catch (error) {
+    console.error("Error fetching exam periods:", error);
+    res.status(500).json({ message: "Failed to fetch exam periods." });
+  }
+});
+
+app.patch("/exam-period", async (req, res) => {
+  const { examPeriodId, examPeriodStatus } = req.body;
+
+  if (!examPeriodId || examPeriodStatus === undefined) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
+
+  try {
+    const result = await ExamPeriod.findByIdAndUpdate(
+      examPeriodId,
+      { examStatus: examPeriodStatus },
+      { new: true }
+    );
+
+    if (!result) {
+      return res.status(404).json({ message: "หาช่วงสอบไม่พบ" });
+    }
+
+    res.status(200).json({ message: `อัพเดทสถานะช่วงสอบ ${result.examName} สำเร็จ`, result });
+  } catch (error) {
+    res.status(500).json({ message: "อัพเดทสถานะช่วงสอบไม่สำเร็จ" });
   }
 });
 
