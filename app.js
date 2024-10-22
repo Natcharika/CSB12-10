@@ -65,7 +65,7 @@ const verifyRoleSuperAdminAndAdmin = (req, res, next) => {
 const app = express();
 app.use(cors());
 // app.use(cors({
-//   origin: "http://202.44.40.169:3000", // or specify the allowed origin(s)
+//   origin: "http://202.44.40.169:3000" || http://202.44.40.169:8788", // or specify the allowed origin(s)
 //   methods: ['GET', 'POST', 'PUT', 'DELETE'],
 //   allowedHeaders: ['Content-Type', 'Authorization'],
 // }));
