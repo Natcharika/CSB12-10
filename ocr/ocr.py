@@ -62,7 +62,10 @@ def get_status_project_1(student_id):
         file_docs = collection.find_one({'fi_id': student_id})
         if file_docs:
             fi_result = file_docs.get('fi_result', {})
-            return fi_result.get('status', "ยังไม่ได้ตรวจสอบ")
+            if fi_result:
+                project_1 = fi_result.get('project_1', {})
+                if project_1:
+                    return project_1.get('status', "ยังไม่ได้ตรวจสอบ")
         return "ยังไม่ได้ตรวจสอบ"
     except Exception as e:
         logging.error(f"Error connecting to MongoDB: {e}")
