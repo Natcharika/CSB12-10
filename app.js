@@ -57,6 +57,11 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json({ limit: "5mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "5mb" }));
+// app.use(cors({
+//   origin: "http://202.44.40.169:3000" || "http://202.44.40.169:8788", // or specify the allowed origin(s)
+//   methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+// }));
 
 app.use(express.json());
 
